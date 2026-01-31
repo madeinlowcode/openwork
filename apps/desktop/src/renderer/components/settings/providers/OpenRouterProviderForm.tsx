@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import type { ConnectedProvider, OpenRouterCredentials } from '@accomplish/shared';
 import { PROVIDER_META } from '@accomplish/shared';
 import {
@@ -50,10 +50,10 @@ export function OpenRouterProviderForm({
     setError(null);
 
     try {
-      const accomplish = getAccomplish();
+      const jurisiar = getJurisiar();
 
       // Validate key
-      const validation = await accomplish.validateApiKeyForProvider('openrouter', apiKey.trim());
+      const validation = await jurisiar.validateApiKeyForProvider('openrouter', apiKey.trim());
       if (!validation.valid) {
         setError(validation.error || 'Invalid API key');
         setConnecting(false);
@@ -61,10 +61,10 @@ export function OpenRouterProviderForm({
       }
 
       // Save key
-      await accomplish.addApiKey('openrouter', apiKey.trim());
+      await jurisiar.addApiKey('openrouter', apiKey.trim());
 
       // Fetch models
-      const result = await accomplish.fetchOpenRouterModels();
+      const result = await jurisiar.fetchOpenRouterModels();
       if (!result.success) {
         setError(result.error || 'Failed to fetch models');
         setConnecting(false);

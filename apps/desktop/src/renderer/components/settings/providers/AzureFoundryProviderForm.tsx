@@ -1,7 +1,7 @@
 // apps/desktop/src/renderer/components/settings/providers/AzureFoundryProviderForm.tsx
 
 import { useState } from 'react';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import type { ConnectedProvider, AzureFoundryCredentials } from '@accomplish/shared';
 import {
   ModelSelector,
@@ -53,10 +53,10 @@ export function AzureFoundryProviderForm({
     setError(null);
 
     try {
-      const accomplish = getAccomplish();
+      const jurisiar = getJurisiar();
 
       // Validate connection
-      const validation = await accomplish.testAzureFoundryConnection({
+      const validation = await jurisiar.testAzureFoundryConnection({
         endpoint: endpoint.trim(),
         deploymentName: deploymentName.trim(),
         authType,
@@ -70,7 +70,7 @@ export function AzureFoundryProviderForm({
       }
 
       // Save credentials
-      await accomplish.saveAzureFoundryConfig({
+      await jurisiar.saveAzureFoundryConfig({
         endpoint: endpoint.trim(),
         deploymentName: deploymentName.trim(),
         authType,

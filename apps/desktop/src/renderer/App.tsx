@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { isRunningInElectron, getAccomplish } from './lib/accomplish';
+import { isRunningInElectron, getJurisiar } from './lib/jurisiar';
 import { springs, variants } from './lib/animations';
 import type { ProviderId } from '@accomplish/shared';
 
@@ -71,9 +71,9 @@ const { openLauncher, authError, clearAuthError } = useTaskStore();
       }
 
       try {
-        const accomplish = getAccomplish();
+        const jurisiar = getJurisiar();
         // Mark onboarding as complete (no welcome screen needed)
-        await accomplish.setOnboardingComplete(true);
+        await jurisiar.setOnboardingComplete(true);
         setStatus('ready');
       } catch (error) {
         console.error('Failed to initialize app:', error);

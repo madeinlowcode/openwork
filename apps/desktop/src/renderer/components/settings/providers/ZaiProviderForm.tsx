@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import type { ConnectedProvider, ZaiCredentials, ZaiRegion } from '@accomplish/shared';
 import { PROVIDER_META, DEFAULT_PROVIDERS, getDefaultModelForProvider } from '@accomplish/shared';
@@ -51,8 +51,8 @@ export function ZaiProviderForm({
     setError(null);
 
     try {
-      const accomplish = getAccomplish();
-      const validation = await accomplish.validateApiKeyForProvider('zai', apiKey.trim(), { region });
+      const jurisiar = getJurisiar();
+      const validation = await jurisiar.validateApiKeyForProvider('zai', apiKey.trim(), { region });
 
       if (!validation.valid) {
         setError(validation.error || 'Invalid API key');
@@ -60,7 +60,7 @@ export function ZaiProviderForm({
         return;
       }
 
-      await accomplish.addApiKey('zai', apiKey.trim());
+      await jurisiar.addApiKey('zai', apiKey.trim());
 
       const defaultModel = getDefaultModelForProvider('zai');
       const trimmedKey = apiKey.trim();

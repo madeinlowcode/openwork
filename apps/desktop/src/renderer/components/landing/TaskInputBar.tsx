@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { getAccomplish } from '../../lib/accomplish';
+import { getJurisiar } from '../../lib/jurisiar';
 import { CornerDownLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useSpeechInput } from '../../hooks/useSpeechInput';
 import { SpeechInputButton } from '../ui/SpeechInputButton';
@@ -42,7 +42,7 @@ export default function TaskInputBar({
   const isDisabled = disabled || isLoading;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingAutoSubmitRef = useRef<string | null>(null);
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
 
   // Speech input hook
   const speechInput = useSpeechInput({
@@ -162,7 +162,7 @@ export default function TaskInputBar({
           data-testid="task-input-submit"
           type="button"
           onClick={() => {
-            accomplish.logEvent({
+            jurisiar.logEvent({
               level: 'info',
               message: 'Task input submit clicked',
               context: { prompt: value },

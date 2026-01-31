@@ -1,9 +1,9 @@
 {
-  "name": "@accomplish/desktop",
+  "name": "@jurisiar/desktop",
   "version": "0.3.5",
   "private": true,
   "type": "module",
-  "description": "Accomplish Desktop App",
+  "description": "Agente de IA para advogados e profissionais juridicos",
   "main": "dist-electron/main/index.js",
   "scripts": {
     "postinstall": "node scripts/postinstall.cjs",
@@ -100,8 +100,8 @@
   "build": {
     "npmRebuild": false,
     "compression": "store",
-    "appId": "ai.accomplish.desktop",
-    "productName": "Openwork",
+    "appId": "com.jurisiar.app",
+    "productName": "Jurisiar",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release",
@@ -201,7 +201,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Openwork"
+      "shortcutName": "Jurisiar"
     }
   }
 }

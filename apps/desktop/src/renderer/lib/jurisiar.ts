@@ -1,7 +1,7 @@
 /**
- * Accomplish API - Interface to the Electron main process
+ * Jurisiar API - Interface to the Electron main process
  *
- * This module provides type-safe access to the accomplish API
+ * This module provides type-safe access to the jurisiar API
  * exposed by the preload script via contextBridge.
  */
 
@@ -24,7 +24,7 @@ import type {
 } from '@accomplish/shared';
 
 // Define the API interface
-interface AccomplishAPI {
+interface JurisiarAPI {
   // App info
   getVersion(): Promise<string>;
   getPlatform(): Promise<string>;
@@ -191,7 +191,7 @@ interface AccomplishAPI {
   exportLogs(): Promise<{ success: boolean; path?: string; error?: string; reason?: string }>;
 }
 
-interface AccomplishShell {
+interface JurisiarShell {
   version: string;
   platform: string;
   isElectron: true;
@@ -200,35 +200,35 @@ interface AccomplishShell {
 // Extend Window interface
 declare global {
   interface Window {
-    accomplish?: AccomplishAPI;
-    accomplishShell?: AccomplishShell;
+    jurisiar?: JurisiarAPI;
+    jurisiarShell?: JurisiarShell;
   }
 }
 
 /**
- * Get the accomplish API
+ * Get the jurisiar API
  * Throws if not running in Electron
  */
-export function getAccomplish() {
-  if (!window.accomplish) {
-    throw new Error('Accomplish API not available - not running in Electron');
+export function getJurisiar() {
+  if (!window.jurisiar) {
+    throw new Error('Jurisiar API not available - not running in Electron');
   }
   return {
-    ...window.accomplish,
+    ...window.jurisiar,
 
     validateBedrockCredentials: async (credentials: BedrockCredentials): Promise<{ valid: boolean; error?: string }> => {
-      return window.accomplish!.validateBedrockCredentials(JSON.stringify(credentials));
+      return window.jurisiar!.validateBedrockCredentials(JSON.stringify(credentials));
     },
 
     saveBedrockCredentials: async (credentials: BedrockCredentials): Promise<ApiKeyConfig> => {
-      return window.accomplish!.saveBedrockCredentials(JSON.stringify(credentials));
+      return window.jurisiar!.saveBedrockCredentials(JSON.stringify(credentials));
     },
 
     getBedrockCredentials: async (): Promise<BedrockCredentials | null> => {
-      return window.accomplish!.getBedrockCredentials();
+      return window.jurisiar!.getBedrockCredentials();
     },
 
-    fetchBedrockModels: (credentials: string) => window.accomplish!.fetchBedrockModels(credentials),
+    fetchBedrockModels: (credentials: string) => window.jurisiar!.fetchBedrockModels(credentials),
   };
 }
 
@@ -236,30 +236,30 @@ export function getAccomplish() {
  * Check if running in Electron shell
  */
 export function isRunningInElectron(): boolean {
-  return window.accomplishShell?.isElectron === true;
+  return window.jurisiarShell?.isElectron === true;
 }
 
 /**
  * Get shell version if available
  */
 export function getShellVersion(): string | null {
-  return window.accomplishShell?.version ?? null;
+  return window.jurisiarShell?.version ?? null;
 }
 
 /**
  * Get shell platform if available
  */
 export function getShellPlatform(): string | null {
-  return window.accomplishShell?.platform ?? null;
+  return window.jurisiarShell?.platform ?? null;
 }
 
 /**
- * React hook to use the accomplish API
+ * React hook to use the jurisiar API
  */
-export function useAccomplish(): AccomplishAPI {
-  const api = window.accomplish;
+export function useJurisiar(): JurisiarAPI {
+  const api = window.jurisiar;
   if (!api) {
-    throw new Error('Accomplish API not available - not running in Electron');
+    throw new Error('Jurisiar API not available - not running in Electron');
   }
   return api;
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import type { ConnectedProvider, OllamaCredentials, ToolSupportStatus } from '@accomplish/shared';
 import {
@@ -168,8 +168,8 @@ export function OllamaProviderForm({
     setError(null);
 
     try {
-      const accomplish = getAccomplish();
-      const result = await accomplish.testOllamaConnection(serverUrl);
+      const jurisiar = getJurisiar();
+      const result = await jurisiar.testOllamaConnection(serverUrl);
 
       if (!result.success) {
         setError(result.error || 'Connection failed');

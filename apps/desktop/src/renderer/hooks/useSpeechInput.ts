@@ -10,7 +10,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { getAccomplish } from '../lib/accomplish';
+import { getJurisiar } from '../lib/jurisiar';
 
 /**
  * Speech recognition error
@@ -94,7 +94,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}): UseSpeechIn
     maxDuration = 120000,
   } = options;
 
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
 
   // Refs for recording state
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -130,10 +130,10 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}): UseSpeechIn
 
   // Check if speech input is configured
   useEffect(() => {
-    accomplish.speechIsConfigured().then((configured) => {
+    jurisiar.speechIsConfigured().then((configured) => {
       setState((prev) => ({ ...prev, isConfigured: configured }));
     });
-  }, [accomplish]);
+  }, [jurisiar]);
 
   /**
    * Clean up recording resources
@@ -303,7 +303,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}): UseSpeechIn
       lastAudioDataRef.current = audioData;
 
       // Send to main process for transcription
-      const result = await accomplish.speechTranscribe(audioData, 'audio/webm');
+      const result = await jurisiar.speechTranscribe(audioData, 'audio/webm');
 
       if (result.success) {
         setState((prev) => ({
@@ -341,7 +341,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}): UseSpeechIn
       }));
       onError?.(speechError);
     }
-  }, [state.isRecording, onRecordingStateChange, onTranscriptionComplete, onError, cleanup, accomplish, formatErrorMessage]);
+  }, [state.isRecording, onRecordingStateChange, onTranscriptionComplete, onError, cleanup, jurisiar, formatErrorMessage]);
 
   /**
    * Cancel recording without transcribing
@@ -377,7 +377,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}): UseSpeechIn
     try {
       setState((prev) => ({ ...prev, isTranscribing: true, error: null }));
 
-      const result = await accomplish.speechTranscribe(lastAudioDataRef.current, 'audio/webm');
+      const result = await jurisiar.speechTranscribe(lastAudioDataRef.current, 'audio/webm');
 
       if (result.success) {
         setState((prev) => ({
@@ -403,7 +403,7 @@ export function useSpeechInput(options: UseSpeechInputOptions = {}): UseSpeechIn
       setState((prev) => ({ ...prev, isTranscribing: false, error: speechError }));
       onError?.(speechError);
     }
-  }, [state.isTranscribing, state.isRecording, onTranscriptionComplete, onError, accomplish, formatErrorMessage]);
+  }, [state.isTranscribing, state.isRecording, onTranscriptionComplete, onError, jurisiar, formatErrorMessage]);
 
   /**
    * Clear the current error

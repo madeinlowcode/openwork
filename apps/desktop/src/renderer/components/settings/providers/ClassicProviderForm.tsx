@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import type { ProviderId, ConnectedProvider, ApiKeyCredentials, OAuthCredentials } from '@accomplish/shared';
 import { PROVIDER_META, DEFAULT_PROVIDERS, getDefaultModelForProvider } from '@accomplish/shared';
@@ -71,8 +71,8 @@ export function ClassicProviderForm({
   useEffect(() => {
     if (!isOpenAI) return;
 
-    const accomplish = getAccomplish();
-    accomplish.getOpenAiBaseUrl().then(setOpenAiBaseUrl).catch(console.error);
+    const jurisiar = getJurisiar();
+    jurisiar.getOpenAiBaseUrl().then(setOpenAiBaseUrl).catch(console.error);
   }, [isOpenAI]);
 
   const handleConnect = async () => {
@@ -85,14 +85,14 @@ export function ClassicProviderForm({
     setError(null);
 
     try {
-      const accomplish = getAccomplish();
+      const jurisiar = getJurisiar();
 
       // Save base URL for OpenAI before validating
       if (isOpenAI) {
-        await accomplish.setOpenAiBaseUrl(openAiBaseUrl.trim());
+        await jurisiar.setOpenAiBaseUrl(openAiBaseUrl.trim());
       }
 
-      const validation = await accomplish.validateApiKeyForProvider(providerId, apiKey.trim());
+      const validation = await jurisiar.validateApiKeyForProvider(providerId, apiKey.trim());
 
       if (!validation.valid) {
         setError(validation.error || 'Invalid API key');
@@ -101,7 +101,7 @@ export function ClassicProviderForm({
       }
 
       // Save the API key
-      await accomplish.addApiKey(providerId as any, apiKey.trim());
+      await jurisiar.addApiKey(providerId as any, apiKey.trim());
 
       // Get default model for this provider (if one exists)
       const defaultModel = getDefaultModelForProvider(providerId);
@@ -134,9 +134,9 @@ export function ClassicProviderForm({
     setSigningIn(true);
     setError(null);
     try {
-      const accomplish = getAccomplish();
-      await accomplish.loginOpenAiWithChatGpt();
-      const status = await accomplish.getOpenAiOauthStatus();
+      const jurisiar = getJurisiar();
+      await jurisiar.loginOpenAiWithChatGpt();
+      const status = await jurisiar.getOpenAiOauthStatus();
 
       if (status.connected) {
         // Create connected provider with OAuth credentials

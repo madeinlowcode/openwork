@@ -7,8 +7,8 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 
-// Expose the accomplish API to the renderer
-const accomplishAPI = {
+// Expose the jurisiar API to the renderer
+const jurisiarAPI = {
   // App info
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   getPlatform: (): Promise<string> => ipcRenderer.invoke('app:platform'),
@@ -300,18 +300,18 @@ const accomplishAPI = {
 };
 
 // Expose the API to the renderer
-contextBridge.exposeInMainWorld('accomplish', accomplishAPI);
+contextBridge.exposeInMainWorld('jurisiar', jurisiarAPI);
 
 // Also expose shell info for compatibility checks
 const packageVersion = process.env.npm_package_version;
 if (!packageVersion) {
   throw new Error('Package version is not defined. Build is misconfigured.');
 }
-contextBridge.exposeInMainWorld('accomplishShell', {
+contextBridge.exposeInMainWorld('jurisiarShell', {
   version: packageVersion,
   platform: process.platform,
   isElectron: true,
 });
 
 // Type declarations
-export type AccomplishAPI = typeof accomplishAPI;
+export type JurisiarAPI = typeof jurisiarAPI;

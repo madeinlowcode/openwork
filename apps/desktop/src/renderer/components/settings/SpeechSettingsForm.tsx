@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mic, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { getAccomplish } from '../../lib/accomplish';
+import { getJurisiar } from '../../lib/jurisiar';
 
 interface SpeechSettingsFormProps {
   /**
@@ -28,17 +28,17 @@ interface SpeechSettingsFormProps {
 }
 
 export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps) {
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
 
   const [apiKey, setApiKey] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
 
   // Load existing configuration on mount
   useEffect(() => {
-    accomplish.speechGetConfig().then((config) => {
+    jurisiar.speechGetConfig().then((config) => {
       setIsConfigured(config.hasApiKey);
     });
-  }, [accomplish]);
+  }, [jurisiar]);
   const [isLoading, setIsLoading] = useState(false);
   const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -53,7 +53,7 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
 
     try {
       // Save the API key
-      await accomplish.addApiKey('elevenlabs', apiKey, 'ElevenLabs Speech-to-Text');
+      await jurisiar.addApiKey('elevenlabs', apiKey, 'ElevenLabs Speech-to-Text');
       setSaveResult({ success: true, message: 'API key saved successfully' });
       setIsConfigured(true);
       setApiKey(''); // Clear the input after saving
@@ -69,7 +69,7 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
 
   const handleClearApiKey = async () => {
     try {
-      await accomplish.removeApiKey('local-elevenlabs');
+      await jurisiar.removeApiKey('local-elevenlabs');
       setApiKey('');
       setIsConfigured(false);
       setSaveResult(null);

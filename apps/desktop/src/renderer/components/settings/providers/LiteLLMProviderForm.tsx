@@ -11,7 +11,7 @@ import {
   FormError,
 } from '../shared';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 
 // Import LiteLLM logo
 import litellmLogo from '/assets/ai-logos/litellm.svg';
@@ -43,11 +43,11 @@ export function LiteLLMProviderForm({
     setError(null);
 
     try {
-      const accomplish = getAccomplish();
+      const jurisiar = getJurisiar();
       const trimmedKey = apiKey.trim() || undefined;
 
       // Test connection and fetch models
-      const result = await accomplish.testLiteLLMConnection(serverUrl, trimmedKey);
+      const result = await jurisiar.testLiteLLMConnection(serverUrl, trimmedKey);
       if (!result.success) {
         setError(result.error || 'Connection failed');
         setConnecting(false);
@@ -56,10 +56,10 @@ export function LiteLLMProviderForm({
 
       // Save or remove API key based on user input
       if (trimmedKey) {
-        await accomplish.addApiKey('litellm', trimmedKey);
+        await jurisiar.addApiKey('litellm', trimmedKey);
       } else {
         // Remove any previously stored key when connecting without one
-        await accomplish.removeApiKey('litellm');
+        await jurisiar.removeApiKey('litellm');
       }
 
       // Map models to the expected format

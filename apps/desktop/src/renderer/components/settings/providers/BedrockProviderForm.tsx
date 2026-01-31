@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import type { ConnectedProvider, BedrockProviderCredentials } from '@accomplish/shared';
 import { getDefaultModelForProvider } from '@accomplish/shared';
@@ -50,7 +50,7 @@ export function BedrockProviderForm({
     setError(null);
 
     try {
-      const accomplish = getAccomplish();
+      const jurisiar = getJurisiar();
 
       const credentials = authTab === 'accessKey'
         ? {
@@ -66,7 +66,7 @@ export function BedrockProviderForm({
             region,
           };
 
-      const validation = await accomplish.validateBedrockCredentials(credentials);
+      const validation = await jurisiar.validateBedrockCredentials(credentials);
 
       if (!validation.valid) {
         setError(validation.error || 'Invalid credentials');
@@ -75,11 +75,11 @@ export function BedrockProviderForm({
       }
 
       // Save credentials
-      await accomplish.saveBedrockCredentials(credentials);
+      await jurisiar.saveBedrockCredentials(credentials);
 
       // Fetch available models dynamically from AWS
       const credentialsJson = JSON.stringify(credentials);
-      const modelsResult = await accomplish.fetchBedrockModels(credentialsJson);
+      const modelsResult = await jurisiar.fetchBedrockModels(credentialsJson);
       const fetchedModels = modelsResult.success ? modelsResult.models : [];
       setAvailableModels(fetchedModels);
 

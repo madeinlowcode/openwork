@@ -21,9 +21,20 @@ const config: Config = {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))',
         },
+        // Cores principais Jurisiar - Azul Marinho (profissional jurídico)
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
+          DEFAULT: '#1e3a5f', // Azul marinho principal
           foreground: 'hsl(var(--primary-foreground))',
+          50: '#f0f4f8',
+          100: '#d9e2ec',
+          200: '#bcccdc',
+          300: '#9fb3c8',
+          400: '#829ab1',
+          500: '#627d98',
+          600: '#486581',
+          700: '#334e68',
+          800: '#243b53',
+          900: '#1e3a5f',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
@@ -33,11 +44,22 @@ const config: Config = {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
+        // Cores de destaque Jurisiar - Dourado (elegância jurídica)
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
+          DEFAULT: '#c9a227', // Dourado principal
           foreground: 'hsl(var(--accent-foreground))',
           hover: 'hsl(var(--accent-foreground))',
           blue: '#3397FC', // Keep for backward compatibility
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#c9a227',
+          600: '#b8860b',
+          700: '#92400e',
+          800: '#78350f',
+          900: '#451a03',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
@@ -55,20 +77,22 @@ const config: Config = {
         'text-muted': 'hsl(var(--muted-foreground))',
         'text-subtle': 'hsl(var(--muted-foreground))',
         'border-strong': 'hsl(var(--border))',
-        // Keep danger/warning/success for compatibility
+        // Cores de status Jurisiar
         danger: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
           subtle: 'hsl(var(--destructive) / 0.1)',
         },
         warning: {
-          DEFAULT: '#EE7909',
+          DEFAULT: '#f59e0b',
           subtle: '#fef4e6',
         },
         success: {
-          DEFAULT: '#019E55',
+          DEFAULT: '#22c55e',
           subtle: '#e6f7ef',
         },
+        error: '#ef4444',
+        info: '#3b82f6',
       },
       boxShadow: {
         sm: '0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10)',
@@ -97,6 +121,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
+          'Inter',
           'DM Sans',
           'ui-sans-serif',
           'system-ui',
@@ -107,6 +132,14 @@ const config: Config = {
           'Helvetica Neue',
           'Arial',
           'sans-serif',
+        ],
+        serif: [
+          'Merriweather',
+          'Georgia',
+          'Cambria',
+          'Times New Roman',
+          'Times',
+          'serif',
         ],
       },
       transitionTimingFunction: {

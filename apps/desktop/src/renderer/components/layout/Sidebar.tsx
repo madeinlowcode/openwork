@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/stores/taskStore';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import { staggerContainer } from '@/lib/animations';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,7 +17,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
   const { tasks, loadTasks, updateTaskStatus, addTaskUpdate, openLauncher } = useTaskStore();
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
 
   useEffect(() => {
     loadTasks();
@@ -26,11 +26,11 @@ export default function Sidebar() {
   // Subscribe to task status changes (queued -> running) and task updates (complete/error)
   // This ensures sidebar always reflects current task status
   useEffect(() => {
-    const unsubscribeStatusChange = accomplish.onTaskStatusChange?.((data) => {
+    const unsubscribeStatusChange = jurisiar.onTaskStatusChange?.((data) => {
       updateTaskStatus(data.taskId, data.status);
     });
 
-    const unsubscribeTaskUpdate = accomplish.onTaskUpdate((event) => {
+    const unsubscribeTaskUpdate = jurisiar.onTaskUpdate((event) => {
       addTaskUpdate(event);
     });
 
@@ -38,7 +38,7 @@ export default function Sidebar() {
       unsubscribeStatusChange?.();
       unsubscribeTaskUpdate();
     };
-  }, [updateTaskStatus, addTaskUpdate, accomplish]);
+  }, [updateTaskStatus, addTaskUpdate, jurisiar]);
 
   const handleNewConversation = () => {
     navigate('/');

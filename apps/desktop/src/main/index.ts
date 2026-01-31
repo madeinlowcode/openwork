@@ -4,9 +4,9 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-// Hardcode userData path to 'Openwork' regardless of package.json name
+// Hardcode userData path to 'Jurisiar' regardless of package.json name
 // This ensures consistent data location across all versions
-const APP_DATA_NAME = 'Openwork';
+const APP_DATA_NAME = 'Jurisiar';
 app.setPath('userData', path.join(app.getPath('appData'), APP_DATA_NAME));
 
 import { registerIPCHandlers } from './ipc/handlers';
@@ -50,7 +50,7 @@ if (process.env.CLEAN_START === '1') {
 }
 
 // Set app name before anything else (affects deep link dialogs)
-app.name = 'Openwork';
+app.name = 'Jurisiar';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -100,7 +100,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    title: 'Openwork',
+    title: 'Jurisiar',
     icon: icon.isEmpty() ? undefined : icon,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 16 },
@@ -208,8 +208,8 @@ if (!gotTheLock) {
         await dialog.showMessageBox({
           type: 'error',
           title: 'Update Required',
-          message: `This data was created by a newer version of Openwork (schema v${err.storedVersion}).`,
-          detail: `Your app supports up to schema v${err.appVersion}. Please update Openwork to continue.`,
+          message: `This data was created by a newer version of Jurisiar (schema v${err.storedVersion}).`,
+          detail: `Your app supports up to schema v${err.appVersion}. Please update Jurisiar to continue.`,
           buttons: ['Quit'],
         });
         app.quit();

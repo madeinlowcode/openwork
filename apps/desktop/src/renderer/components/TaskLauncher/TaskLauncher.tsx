@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Search, Plus, X } from 'lucide-react';
 import { useTaskStore } from '@/stores/taskStore';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import { cn } from '@/lib/utils';
 import { springs } from '@/lib/animations';
 import TaskLauncherItem from './TaskLauncherItem';
@@ -24,7 +24,7 @@ export default function TaskLauncher() {
     tasks,
     startTask
   } = useTaskStore();
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
 
   // Filter tasks by search query (title only)
   const filteredTasks = useMemo(() => {
@@ -66,7 +66,7 @@ export default function TaskLauncher() {
       // "New task" selected
       if (searchQuery.trim()) {
         // Check if any provider is ready before starting task
-        const settings = await accomplish.getProviderSettings();
+        const settings = await jurisiar.getProviderSettings();
         if (!hasAnyReadyProvider(settings)) {
           // No ready provider - navigate to home which will show settings
           closeLauncher();
@@ -92,7 +92,7 @@ export default function TaskLauncher() {
         navigate(`/execution/${task.id}`);
       }
     }
-  }, [searchQuery, filteredTasks, closeLauncher, navigate, startTask, accomplish]);
+  }, [searchQuery, filteredTasks, closeLauncher, navigate, startTask, jurisiar]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Ignore Enter during IME composition (Chinese/Japanese input)

@@ -1,9 +1,9 @@
 {
-  "name": "accomplish",
+  "name": "jurisiar",
   "version": "0.1.0",
   "private": true,
-  "description": "The open source AI coworker that lives on your desktop",
-  "author": "Accomplish Inc",
+  "description": "Agente de IA para o mercado juridico brasileiro",
+  "author": "Jurisiar",
   "license": "MIT",
   "repository": {
     "type": "git",

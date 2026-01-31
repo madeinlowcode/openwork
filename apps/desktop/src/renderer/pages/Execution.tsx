@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo, useCallback, memo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '../stores/taskStore';
-import { getAccomplish } from '../lib/accomplish';
+import { getJurisiar } from '../lib/jurisiar';
 import { springs } from '../lib/animations';
 import type { TaskMessage } from '@accomplish/shared';
 import { hasAnyReadyProvider } from '@accomplish/shared';
@@ -167,7 +167,7 @@ function getDisplayFilePaths(request: { filePath?: string; filePaths?: string[] 
 export default function ExecutionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [followUp, setFollowUp] = useState('');
   const followUpInputRef = useRef<HTMLInputElement>(null);
@@ -254,10 +254,10 @@ export default function ExecutionPage() {
 
   // Load debug mode setting on mount and subscribe to changes
   useEffect(() => {
-    accomplish.getDebugMode().then(setDebugModeEnabled);
+    jurisiar.getDebugMode().then(setDebugModeEnabled);
 
     // Subscribe to debug mode changes from settings
-    const unsubscribeDebugMode = accomplish.onDebugModeChange?.(({ enabled }) => {
+    const unsubscribeDebugMode = jurisiar.onDebugModeChange?.(({ enabled }) => {
       setDebugModeEnabled(enabled);
     });
 
@@ -265,7 +265,7 @@ export default function ExecutionPage() {
       unsubscribeDebugMode?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - accomplish is a stable singleton wrapper
+  }, []); // Empty deps - jurisiar is a stable singleton wrapper
 
   // Elapsed time timer for startup indicator
   useEffect(() => {
@@ -298,7 +298,7 @@ export default function ExecutionPage() {
     }
 
     // Handle individual task updates
-    const unsubscribeTask = accomplish.onTaskUpdate((event) => {
+    const unsubscribeTask = jurisiar.onTaskUpdate((event) => {
       addTaskUpdate(event);
       // Track current tool from tool messages
       if (event.type === 'message' && event.message?.type === 'tool') {
@@ -316,7 +316,7 @@ export default function ExecutionPage() {
     });
 
     // Handle batched task updates (for performance)
-    const unsubscribeTaskBatch = accomplish.onTaskUpdateBatch?.((event) => {
+    const unsubscribeTaskBatch = jurisiar.onTaskUpdateBatch?.((event) => {
       if (event.messages?.length) {
         addTaskUpdateBatch(event);
         // Track current tool from the last tool message
@@ -331,19 +331,19 @@ export default function ExecutionPage() {
       }
     });
 
-    const unsubscribePermission = accomplish.onPermissionRequest((request) => {
+    const unsubscribePermission = jurisiar.onPermissionRequest((request) => {
       setPermissionRequest(request);
     });
 
     // Subscribe to task status changes (e.g., queued -> running)
-    const unsubscribeStatusChange = accomplish.onTaskStatusChange?.((data) => {
+    const unsubscribeStatusChange = jurisiar.onTaskStatusChange?.((data) => {
       if (data.taskId === id) {
         updateTaskStatus(data.taskId, data.status);
       }
     });
 
     // Subscribe to debug logs
-    const unsubscribeDebugLog = accomplish.onDebugLog((log) => {
+    const unsubscribeDebugLog = jurisiar.onDebugLog((log) => {
       const entry = log as DebugLogEntry;
       if (entry.taskId === id) {
         setDebugLogs((prev) => [...prev, entry]);
@@ -358,7 +358,7 @@ export default function ExecutionPage() {
       unsubscribeDebugLog();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, loadTaskById, addTaskUpdate, addTaskUpdateBatch, updateTaskStatus, setPermissionRequest]); // accomplish is stable singleton
+  }, [id, loadTaskById, addTaskUpdate, addTaskUpdateBatch, updateTaskStatus, setPermissionRequest]); // jurisiar is stable singleton
 
   // Increment counter when task starts/resumes
   useEffect(() => {
@@ -396,9 +396,9 @@ export default function ExecutionPage() {
     if (!followUp.trim()) return;
 
     // Check if any provider is ready before sending (skip in E2E mode)
-    const isE2EMode = await accomplish.isE2EMode();
+    const isE2EMode = await jurisiar.isE2EMode();
     if (!isE2EMode) {
-      const settings = await accomplish.getProviderSettings();
+      const settings = await jurisiar.getProviderSettings();
       if (!hasAnyReadyProvider(settings)) {
         // Store the pending message and open settings dialog
         setPendingFollowUp(followUp);
@@ -432,9 +432,9 @@ export default function ExecutionPage() {
 
   const handleContinue = async () => {
     // Check if any provider is ready before sending (skip in E2E mode)
-    const isE2EMode = await accomplish.isE2EMode();
+    const isE2EMode = await jurisiar.isE2EMode();
     if (!isE2EMode) {
-      const settings = await accomplish.getProviderSettings();
+      const settings = await jurisiar.getProviderSettings();
       if (!hasAnyReadyProvider(settings)) {
         // Store the pending message and open settings dialog
         setPendingFollowUp('continue');

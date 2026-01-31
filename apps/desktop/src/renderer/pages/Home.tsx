@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import TaskInputBar from '../components/landing/TaskInputBar';
 import SettingsDialog from '../components/layout/SettingsDialog';
 import { useTaskStore } from '../stores/taskStore';
-import { getAccomplish } from '../lib/accomplish';
+import { getJurisiar } from '../lib/jurisiar';
 import { springs, staggerContainer, staggerItem } from '../lib/animations';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronDown } from 'lucide-react';
@@ -87,15 +87,15 @@ export default function HomePage() {
   const [settingsInitialTab, setSettingsInitialTab] = useState<'providers' | 'voice'>('providers');
   const { startTask, isLoading, addTaskUpdate, setPermissionRequest } = useTaskStore();
   const navigate = useNavigate();
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
 
   // Subscribe to task events
   useEffect(() => {
-    const unsubscribeTask = accomplish.onTaskUpdate((event) => {
+    const unsubscribeTask = jurisiar.onTaskUpdate((event) => {
       addTaskUpdate(event);
     });
 
-    const unsubscribePermission = accomplish.onPermissionRequest((request) => {
+    const unsubscribePermission = jurisiar.onPermissionRequest((request) => {
       setPermissionRequest(request);
     });
 
@@ -103,7 +103,7 @@ export default function HomePage() {
       unsubscribeTask();
       unsubscribePermission();
     };
-  }, [addTaskUpdate, setPermissionRequest, accomplish]);
+  }, [addTaskUpdate, setPermissionRequest, jurisiar]);
 
   const executeTask = useCallback(async () => {
     if (!prompt.trim() || isLoading) return;
@@ -119,9 +119,9 @@ export default function HomePage() {
     if (!prompt.trim() || isLoading) return;
 
     // Check if any provider is ready before sending (skip in E2E mode)
-    const isE2EMode = await accomplish.isE2EMode();
+    const isE2EMode = await jurisiar.isE2EMode();
     if (!isE2EMode) {
-      const settings = await accomplish.getProviderSettings();
+      const settings = await jurisiar.getProviderSettings();
       if (!hasAnyReadyProvider(settings)) {
         setSettingsInitialTab('providers');
         setShowSettingsDialog(true);

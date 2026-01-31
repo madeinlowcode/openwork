@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
-import { getAccomplish } from '@/lib/accomplish';
+import { getJurisiar } from '@/lib/jurisiar';
 import {
   Dialog,
   DialogContent,
@@ -57,15 +57,15 @@ export default function SettingsDialog({
   // Debug mode state - stored in appSettings, not providerSettings
   const [debugMode, setDebugModeState] = useState(false);
   const [exportStatus, setExportStatus] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
-  const accomplish = getAccomplish();
+  const jurisiar = getJurisiar();
 
   // Refetch settings and debug mode when dialog opens
   useEffect(() => {
     if (!open) return;
     refetch();
     // Load debug mode from appSettings (correct store)
-    accomplish.getDebugMode().then(setDebugModeState);
-  }, [open, refetch, accomplish]);
+    jurisiar.getDebugMode().then(setDebugModeState);
+  }, [open, refetch, jurisiar]);
 
   // Auto-select active provider (or initialProvider) and expand grid if needed when dialog opens
   useEffect(() => {
@@ -175,15 +175,15 @@ export default function SettingsDialog({
   // Handle debug mode toggle - writes to appSettings (correct store)
   const handleDebugToggle = useCallback(async () => {
     const newValue = !debugMode;
-    await accomplish.setDebugMode(newValue);
+    await jurisiar.setDebugMode(newValue);
     setDebugModeState(newValue);
-  }, [debugMode, accomplish]);
+  }, [debugMode, jurisiar]);
 
   // Handle log export
   const handleExportLogs = useCallback(async () => {
     setExportStatus('exporting');
     try {
-      const result = await accomplish.exportLogs();
+      const result = await jurisiar.exportLogs();
       if (result.success) {
         setExportStatus('success');
         // Reset to idle after 2 seconds
@@ -200,7 +200,7 @@ export default function SettingsDialog({
       setExportStatus('error');
       setTimeout(() => setExportStatus('idle'), 3000);
     }
-  }, [accomplish]);
+  }, [jurisiar]);
 
   // Handle done button (close with validation)
   const handleDone = useCallback(() => {

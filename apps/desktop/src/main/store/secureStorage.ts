@@ -72,12 +72,12 @@ function getDerivedKey(): Buffer {
 
   // Combine machine-specific values to create a unique identifier
   // Note: We intentionally exclude userData path so encryption keys remain stable
-  // across userData directory version changes (e.g., desktop -> desktop-v2 -> Openwork)
+  // across userData directory version changes (e.g., desktop -> desktop-v2 -> Jurisiar)
   const machineData = [
     os.platform(),
     os.homedir(),
     os.userInfo().username,
-    'ai.accomplish.desktop', // App identifier
+    'com.jurisiar.app', // App identifier
   ].join(':');
 
   const salt = getSalt();

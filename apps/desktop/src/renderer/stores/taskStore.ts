@@ -9,7 +9,7 @@ import type {
   TaskMessage,
   TodoItem,
 } from '@accomplish/shared';
-import { getAccomplish } from '../lib/accomplish';
+import { getJurisiar } from '../lib/jurisiar';
 
 // Batch update event type for performance optimization
 interface TaskUpdateBatchEvent {
@@ -161,15 +161,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   startTask: async (config: TaskConfig) => {
-    const accomplish = getAccomplish();
+    const jurisiar = getJurisiar();
     set({ isLoading: true, error: null });
     try {
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'info',
         message: 'UI start task',
         context: { prompt: config.prompt, taskId: config.taskId },
       });
-      const task = await accomplish.startTask(config);
+      const task = await jurisiar.startTask(config);
       // Task might be 'running' or 'queued' depending on if another task is running
       // Also add to tasks list so sidebar updates immediately
       const currentTasks = get().tasks;
@@ -179,7 +179,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         // Keep loading state if queued (waiting for queue)
         isLoading: task.status === 'queued',
       });
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'info',
         message: task.status === 'queued' ? 'UI task queued' : 'UI task started',
         context: { taskId: task.id, status: task.status },
@@ -190,7 +190,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         error: err instanceof Error ? err.message : 'Failed to start task',
         isLoading: false,
       });
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'error',
         message: 'UI task start failed',
         context: { error: err instanceof Error ? err.message : String(err) },
@@ -200,11 +200,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   sendFollowUp: async (message: string) => {
-    const accomplish = getAccomplish();
+    const jurisiar = getJurisiar();
     const { currentTask, startTask } = get();
     if (!currentTask) {
       set({ error: 'No active task to continue' });
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'warn',
         message: 'UI follow-up failed: no active task',
       });
@@ -215,7 +215,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     // If no session but task was interrupted, start a fresh task with the new message
     if (!sessionId && currentTask.status === 'interrupted') {
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'info',
         message: 'UI follow-up: starting fresh task (no session from interrupted task)',
         context: { taskId: currentTask.id },
@@ -226,7 +226,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     if (!sessionId) {
       set({ error: 'No session to continue - please start a new task' });
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'warn',
         message: 'UI follow-up failed: missing session',
         context: { taskId: currentTask.id },
@@ -260,12 +260,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }));
 
     try {
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'info',
         message: 'UI follow-up sent',
         context: { taskId: currentTask.id, message },
       });
-      const task = await accomplish.resumeSession(sessionId, message, currentTask.id);
+      const task = await jurisiar.resumeSession(sessionId, message, currentTask.id);
 
       // Update status based on response (could be 'running' or 'queued')
       set((state) => ({
@@ -288,7 +288,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           t.id === taskId ? { ...t, status: 'failed' as TaskStatus } : t
         ),
       }));
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'error',
         message: 'UI follow-up failed',
         context: { taskId: currentTask.id, error: err instanceof Error ? err.message : String(err) },
@@ -297,15 +297,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   cancelTask: async () => {
-    const accomplish = getAccomplish();
+    const jurisiar = getJurisiar();
     const { currentTask } = get();
     if (currentTask) {
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'info',
         message: 'UI cancel task',
         context: { taskId: currentTask.id },
       });
-      await accomplish.cancelTask(currentTask.id);
+      await jurisiar.cancelTask(currentTask.id);
       set((state) => ({
         currentTask: state.currentTask
           ? { ...state.currentTask, status: 'cancelled' }
@@ -318,15 +318,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   interruptTask: async () => {
-    const accomplish = getAccomplish();
+    const jurisiar = getJurisiar();
     const { currentTask } = get();
     if (currentTask && currentTask.status === 'running') {
-      void accomplish.logEvent({
+      void jurisiar.logEvent({
         level: 'info',
         message: 'UI interrupt task',
         context: { taskId: currentTask.id },
       });
-      await accomplish.interruptTask(currentTask.id);
+      await jurisiar.interruptTask(currentTask.id);
       // Note: Don't change task status - task is still running, just interrupted
     }
   },
@@ -336,19 +336,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   respondToPermission: async (response: PermissionResponse) => {
-    const accomplish = getAccomplish();
-    void accomplish.logEvent({
+    const jurisiar = getJurisiar();
+    void jurisiar.logEvent({
       level: 'info',
       message: 'UI permission response',
       context: { ...response },
     });
-    await accomplish.respondToPermission(response);
+    await jurisiar.respondToPermission(response);
     set({ permissionRequest: null });
   },
 
   addTaskUpdate: (event: TaskUpdateEvent) => {
-    const accomplish = getAccomplish();
-    void accomplish.logEvent({
+    const jurisiar = getJurisiar();
+    void jurisiar.logEvent({
       level: 'debug',
       message: 'UI task update received',
       context: { ...event },
@@ -437,8 +437,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   // Batch update handler for performance - processes multiple messages in single state update
   addTaskUpdateBatch: (event: TaskUpdateBatchEvent) => {
-    const accomplish = getAccomplish();
-    void accomplish.logEvent({
+    const jurisiar = getJurisiar();
+    void jurisiar.logEvent({
       level: 'debug',
       message: 'UI task batch update received',
       context: { taskId: event.taskId, messageCount: event.messages.length },
@@ -503,28 +503,28 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   loadTasks: async () => {
-    const accomplish = getAccomplish();
-    const tasks = await accomplish.listTasks();
+    const jurisiar = getJurisiar();
+    const tasks = await jurisiar.listTasks();
     set({ tasks });
   },
 
   loadTaskById: async (taskId: string) => {
-    const accomplish = getAccomplish();
-    const task = await accomplish.getTask(taskId);
+    const jurisiar = getJurisiar();
+    const task = await jurisiar.getTask(taskId);
     set({ currentTask: task, error: task ? null : 'Task not found' });
   },
 
   deleteTask: async (taskId: string) => {
-    const accomplish = getAccomplish();
-    await accomplish.deleteTask(taskId);
+    const jurisiar = getJurisiar();
+    await jurisiar.deleteTask(taskId);
     set((state) => ({
       tasks: state.tasks.filter((t) => t.id !== taskId),
     }));
   },
 
   clearHistory: async () => {
-    const accomplish = getAccomplish();
-    await accomplish.clearTaskHistory();
+    const jurisiar = getJurisiar();
+    await jurisiar.clearTaskHistory();
     set({ tasks: [] });
   },
 
@@ -571,8 +571,8 @@ const STARTUP_STAGES = ['starting', 'browser', 'environment', 'loading', 'connec
 
 // Global subscription to setup progress events (browser download, startup stages, etc.)
 // This runs when the module is loaded to catch early progress events
-if (typeof window !== 'undefined' && window.accomplish) {
-  window.accomplish.onTaskProgress((progress: unknown) => {
+if (typeof window !== 'undefined' && window.jurisiar) {
+  window.jurisiar.onTaskProgress((progress: unknown) => {
     const event = progress as SetupProgressEvent;
     const state = useTaskStore.getState();
 
@@ -610,7 +610,7 @@ if (typeof window !== 'undefined' && window.accomplish) {
   });
 
   // Clear progress when task completes or errors
-  window.accomplish.onTaskUpdate((event: unknown) => {
+  window.jurisiar.onTaskUpdate((event: unknown) => {
     const updateEvent = event as TaskUpdateEvent;
     if (updateEvent.type === 'complete' || updateEvent.type === 'error') {
       const state = useTaskStore.getState();
@@ -623,17 +623,17 @@ if (typeof window !== 'undefined' && window.accomplish) {
   });
 
   // Subscribe to task summary updates
-  window.accomplish.onTaskSummary?.(( data: { taskId: string; summary: string }) => {
+  window.jurisiar.onTaskSummary?.(( data: { taskId: string; summary: string }) => {
     useTaskStore.getState().setTaskSummary(data.taskId, data.summary);
   });
 
   // Subscribe to todo updates
-  window.accomplish.onTodoUpdate?.((data: { taskId: string; todos: TodoItem[] }) => {
+  window.jurisiar.onTodoUpdate?.((data: { taskId: string; todos: TodoItem[] }) => {
     useTaskStore.getState().setTodos(data.taskId, data.todos);
   });
 
   // Subscribe to auth error events (e.g., OAuth token expired)
-  window.accomplish.onAuthError?.((data: { providerId: string; message: string }) => {
+  window.jurisiar.onAuthError?.((data: { providerId: string; message: string }) => {
     useTaskStore.getState().setAuthError(data);
   });
 }
