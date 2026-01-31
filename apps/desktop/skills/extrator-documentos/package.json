@@ -1,0 +1,33 @@
+{
+  "name": "extrator-documentos",
+  "version": "1.0.0",
+  "description": "MCP Server para extração de texto e análise de documentos PDF e DOCX jurídicos",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "start": "npx tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "pdf-parse": "^1.1.1",
+    "mammoth": "^1.8.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@types/pdf-parse": "^1.1.4",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  },
+  "keywords": [
+    "mcp",
+    "pdf",
+    "docx",
+    "extrator",
+    "juridico",
+    "documentos"
+  ],
+  "license": "MIT"
+}
