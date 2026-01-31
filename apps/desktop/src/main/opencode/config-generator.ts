@@ -1009,6 +1009,62 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
         enabled: true,
         timeout: 30000,
       },
+      // ===== Skills Jurídicos =====
+      // Consulta de processos via API DataJud do CNJ
+      'consulta-processos': {
+        type: 'local',
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'consulta-processos',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
+        enabled: true,
+        environment: {
+          DATAJUD_API_KEY: process.env.DATAJUD_API_KEY || '',
+        },
+        timeout: 60000,
+      },
+      // Consulta de legislação via LexML do Senado Federal
+      'consulta-legislacao': {
+        type: 'local',
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'consulta-legislacao',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
+        enabled: true,
+        timeout: 60000,
+      },
+      // Extração de texto de PDFs e documentos Word
+      'extrator-documentos': {
+        type: 'local',
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'extrator-documentos',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
+        enabled: true,
+        timeout: 60000,
+      },
+      // Consultas cadastrais (CNPJ, CPF)
+      'consulta-cadastros': {
+        type: 'local',
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'consulta-cadastros',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
+        enabled: true,
+        timeout: 30000,
+      },
     },
   };
 
