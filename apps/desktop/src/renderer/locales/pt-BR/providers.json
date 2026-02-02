@@ -1,0 +1,38 @@
+{
+  "grid": {
+    "title": "Provedores",
+    "searchPlaceholder": "Buscar Provedores",
+    "showAll": "Mostrar Todos",
+    "hide": "Ocultar"
+  },
+  "form": {
+    "apiKey": "Chave de API",
+    "howToFind": "Como encontrar?",
+    "enterApiKey": "Digite a Chave de API",
+    "baseUrl": "URL Base (opcional)",
+    "baseUrlPlaceholder": "https://api.openai.com/v1",
+    "baseUrlDescription": "Deixe em branco para OpenAI. Configure para usar um endpoint compativel com OpenAI.",
+    "pleaseEnterApiKey": "Por favor, digite uma chave de API",
+    "or": "ou"
+  },
+  "oauth": {
+    "loginWith": "Entrar com {{provider}}",
+    "signingIn": "Entrando..."
+  },
+  "connection": {
+    "connect": "Conectar",
+    "connecting": "Conectando...",
+    "connected": "Conectado",
+    "disconnect": "Desconectar",
+    "connectionFailed": "Falha na conexao",
+    "invalidApiKey": "Chave de API invalida",
+    "signInFailed": "Falha ao entrar"
+  },
+  "model": {
+    "label": "Modelo",
+    "selectModel": "Selecionar modelo...",
+    "searchModels": "Buscar modelos...",
+    "noModelsFound": "Nenhum modelo encontrado",
+    "pleaseSelectModel": "Por favor, selecione um modelo"
+  }
+}

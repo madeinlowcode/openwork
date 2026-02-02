@@ -1,13 +1,29 @@
 /**
- * Speech-to-Text Settings Component
+ * @component SpeechSettingsForm
+ * @description Componente de configuracoes de Speech-to-Text (ElevenLabs)
  *
- * Allows users to:
- * - Enable/disable speech input
- * - Configure ElevenLabs API key
- * - Verify configuration by attempting transcription
+ * Permite que os usuarios:
+ * - Ativar/desativar entrada de voz
+ * - Configurar chave de API da ElevenLabs
+ * - Verificar configuracao tentando transcricao
+ *
+ * @context Settings > Voice Input tab
+ *
+ * @dependencies
+ * - react-i18next (useTranslation)
+ * - components/ui/card.tsx (Card, CardHeader, CardContent)
+ * - lib/jurisiar.ts (getJurisiar)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/speech.json (traducoes PT)
+ * - locales/en/speech.json (traducoes EN)
+ *
+ * AIDEV-WARNING: Este componente gerencia chaves de API sensiveis
+ * AIDEV-NOTE: Usa namespace 'speech' para traducoes
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +44,8 @@ interface SpeechSettingsFormProps {
 }
 
 export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps) {
+  // AIDEV-NOTE: Usa namespace 'speech' para traducoes
+  const { t } = useTranslation('speech');
   const jurisiar = getJurisiar();
 
   const [apiKey, setApiKey] = useState('');
@@ -44,7 +62,7 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
 
   const handleSaveApiKey = async () => {
     if (!apiKey.trim()) {
-      setSaveResult({ success: false, message: 'API key is required' });
+      setSaveResult({ success: false, message: t('apiKey.required') });
       return;
     }
 
@@ -54,7 +72,7 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
     try {
       // Save the API key
       await jurisiar.addApiKey('elevenlabs', apiKey, 'ElevenLabs Speech-to-Text');
-      setSaveResult({ success: true, message: 'API key saved successfully' });
+      setSaveResult({ success: true, message: t('apiKey.savedSuccess') });
       setIsConfigured(true);
       setApiKey(''); // Clear the input after saving
       onChange?.({ apiKey, enabled: true });
@@ -85,9 +103,9 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
         <div className="flex items-center gap-2">
           <Mic className="h-5 w-5 text-blue-500" />
           <div>
-            <CardTitle>Speech-to-Text</CardTitle>
+            <CardTitle>{t('settings.title')}</CardTitle>
             <CardDescription>
-              Enable voice input using ElevenLabs Speech-to-Text API
+              {t('settings.description')}
             </CardDescription>
           </div>
         </div>
@@ -98,7 +116,7 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-xs">
-            To use speech input, you need an ElevenLabs API key. Get one at{' '}
+            {t('info.needApiKey')}{' '}
             <a
               href="https://elevenlabs.io/app/settings/api-keys"
               target="_blank"
@@ -115,18 +133,18 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
           <Alert>
             <CheckCircle2 className="h-4 w-4 text-green-500" />
             <AlertDescription className="text-xs">
-              ElevenLabs API key is configured. Enter a new key below to replace it.
+              {t('info.configured')}
             </AlertDescription>
           </Alert>
         )}
 
         {/* API Key Input */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">ElevenLabs API Key</label>
+          <label className="text-sm font-medium">{t('apiKey.label')}</label>
           <div className="flex gap-2">
             <Input
               type="password"
-              placeholder={isConfigured ? '••••••••••••••••' : 'xi-...'}
+              placeholder={isConfigured ? t('apiKey.placeholderConfigured') : t('apiKey.placeholder')}
               value={apiKey}
               onChange={(e) => {
                 setApiKey(e.target.value);
@@ -149,7 +167,7 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Your API key is stored securely in your system keychain.
+            {t('apiKey.securityNote')}
           </p>
         </div>
 
@@ -161,7 +179,7 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
             className="flex-1"
           >
             {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save API Key
+            {t('apiKey.save')}
           </Button>
         </div>
 
@@ -179,10 +197,10 @@ export function SpeechSettingsForm({ onSave, onChange }: SpeechSettingsFormProps
 
         {/* Usage Instructions */}
         <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
-          <p className="font-medium text-blue-900 dark:text-blue-100 mb-2">How to use:</p>
+          <p className="font-medium text-blue-900 dark:text-blue-100 mb-2">{t('usage.title')}</p>
           <ul className="text-blue-800 dark:text-blue-200 space-y-1 text-xs">
-            <li>• <strong>Click the microphone button</strong> to start recording, click again to stop</li>
-            <li>• <strong>Hold Alt key</strong> to record voice input (push-to-talk mode)</li>
+            <li>• {t('usage.clickMic')}</li>
+            <li>• {t('usage.holdAlt')}</li>
           </ul>
         </div>
       </CardContent>

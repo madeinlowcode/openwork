@@ -1,30 +1,56 @@
-# Skill: Consulta de Processos Judiciais (DataJud CNJ)
+# Skill: Consulta de Processos Judiciais (via Navegador)
 
-MCP Server para consulta de processos judiciais em todos os tribunais brasileiros via API pública do DataJud (Conselho Nacional de Justiça).
+MCP Server para consulta de processos judiciais em tribunais brasileiros usando navegacao web.
 
-## Configuração
+## Visao Geral
 
-### Obter API Key
+Este skill fornece **instrucoes de navegacao** para o agente buscar processos judiciais nos sites dos tribunais brasileiros usando o **dev-browser** (MCP de automacao de navegador).
 
-1. Acesse: https://datajud-wiki.cnj.jus.br/
-2. Siga as instruções para obter sua chave de API
-3. A chave é gratuita e disponível para todos
+**IMPORTANTE:** Esta skill NAO faz chamadas de API diretamente. Ela retorna instrucoes para o agente usar browser_script/browser_navigate para acessar os sites e extrair informacoes.
 
-### Variáveis de Ambiente
+## Sites de Consulta Processual
 
-```bash
-DATAJUD_API_KEY=sua_chave_api_aqui
-```
+### Tribunais Superiores
+| Tribunal | URL | Descricao |
+|----------|-----|-----------|
+| STF | https://portal.stf.jus.br/processos/ | Supremo Tribunal Federal |
+| STJ | https://processo.stj.jus.br/processo/pesquisa/ | Superior Tribunal de Justica |
+| TST | https://consultaprocessual.tst.jus.br/ | Tribunal Superior do Trabalho |
 
-## Ferramentas Disponíveis
+### Tribunais de Justica Estaduais (TJ)
+| Tribunal | URL | Estado |
+|----------|-----|--------|
+| TJSP | https://esaj.tjsp.jus.br/cpopg/open.do | Sao Paulo |
+| TJRJ | https://www3.tjrj.jus.br/consultaprocessual/ | Rio de Janeiro |
+| TJMG | https://www4.tjmg.jus.br/juridico/sf/proc_complemento.jsp | Minas Gerais |
+| TJRS | https://www.tjrs.jus.br/novo/consultas/processos/ | Rio Grande do Sul |
+| TJPR | https://portal.tjpr.jus.br/projudi/ | Parana |
+| TJSC | https://esaj.tjsc.jus.br/cpopg/open.do | Santa Catarina |
+
+### Tribunais Regionais Federais (TRF)
+| Tribunal | URL | Regiao |
+|----------|-----|--------|
+| TRF1 | https://processual.trf1.jus.br/consultaProcessual/ | 1a Regiao |
+| TRF2 | https://eproc.trf2.jus.br/eproc/externo_controlador.php | 2a Regiao |
+| TRF3 | https://pje1g.trf3.jus.br/pje/ConsultaPublica/ | 3a Regiao |
+| TRF4 | https://consulta.trf4.jus.br/trf4/controlador.php | 4a Regiao |
+| TRF5 | https://pje.trf5.jus.br/pje/ConsultaPublica/ | 5a Regiao |
+
+### CNJ - Consulta Unificada
+| Sistema | URL | Descricao |
+|---------|-----|-----------|
+| DataJud | https://datajud-wiki.cnj.jus.br/ | Base de dados unificada do CNJ |
+| Justica em Numeros | https://www.cnj.jus.br/pesquisas-judiciarias/justica-em-numeros/ | Estatisticas |
+
+## Ferramentas Disponiveis
 
 ### 1. `consultar_processo`
 
-Consulta um processo específico pelo número NPU (Numeração Única de Processo).
+Retorna instrucoes de navegacao para consultar um processo especifico pelo numero NPU.
 
-**Parâmetros:**
-- `tribunal` (obrigatório): Sigla do tribunal (ex: "tjsp", "stj", "trf3")
-- `numeroProcesso` (obrigatório): Número do processo no formato NPU ou apenas dígitos
+**Parametros:**
+- `tribunal` (obrigatorio): Sigla do tribunal (ex: "tjsp", "stj", "trf3")
+- `numeroProcesso` (obrigatorio): Numero do processo no formato NPU ou apenas digitos
 
 **Exemplo:**
 ```json
@@ -34,201 +60,153 @@ Consulta um processo específico pelo número NPU (Numeração Única de Process
 }
 ```
 
-**Retorno:** Dados completos do processo incluindo classe, órgão julgador, partes, assuntos e últimas movimentações.
-
----
+**Retorno:** Instrucoes de navegacao para consultar o processo no site do TJSP.
 
 ### 2. `pesquisar_processos`
 
-Pesquisa processos por diversos critérios. Retorna lista paginada.
+Retorna instrucoes de navegacao para pesquisar processos por criterios.
 
-**Parâmetros:**
-- `tribunal` (obrigatório): Sigla do tribunal
-- `numeroProcesso` (opcional): Número parcial ou completo
-- `classe` (opcional): Código da classe processual
-- `orgaoJulgador` (opcional): Código do órgão julgador
-- `dataAjuizamentoInicio` (opcional): Data inicial (YYYY-MM-DD)
-- `dataAjuizamentoFim` (opcional): Data final (YYYY-MM-DD)
-- `assunto` (opcional): Código do assunto
-- `nomeParte` (opcional): Nome da parte (autor, réu, etc.)
-- `tamanho` (opcional): Resultados por página (padrão: 10, máx: 100)
-- `pagina` (opcional): Número da página (começa em 0)
+**Parametros:**
+- `tribunal` (obrigatorio): Sigla do tribunal
+- `nomeParte` (opcional): Nome da parte (autor, reu, etc.)
+- `cpfCnpj` (opcional): CPF ou CNPJ da parte
+- `numeroOab` (opcional): Numero da OAB do advogado
 
-**Exemplo - Buscar por nome da parte:**
+**Exemplo:**
 ```json
 {
   "tribunal": "tjrj",
-  "nomeParte": "João da Silva",
-  "tamanho": 20
+  "nomeParte": "Joao da Silva"
 }
 ```
-
-**Exemplo - Buscar por período:**
-```json
-{
-  "tribunal": "trf3",
-  "dataAjuizamentoInicio": "2024-01-01",
-  "dataAjuizamentoFim": "2024-12-31",
-  "tamanho": 50
-}
-```
-
----
 
 ### 3. `listar_movimentacoes`
 
-Lista os andamentos/movimentações de um processo específico.
+Retorna instrucoes de navegacao para listar os andamentos de um processo.
 
-**Parâmetros:**
-- `tribunal` (obrigatório): Sigla do tribunal
-- `numeroProcesso` (obrigatório): Número do processo
-- `limite` (opcional): Máximo de movimentações (padrão: 20, máx: 100)
-
-**Exemplo:**
-```json
-{
-  "tribunal": "stj",
-  "numeroProcesso": "0000001-00.2024.3.00.0000",
-  "limite": 50
-}
-```
-
-**Retorno:** Lista de movimentações ordenadas da mais recente para a mais antiga, incluindo data, descrição e complementos.
-
----
+**Parametros:**
+- `tribunal` (obrigatorio): Sigla do tribunal
+- `numeroProcesso` (obrigatorio): Numero do processo
 
 ### 4. `listar_tribunais`
 
-Lista todos os tribunais disponíveis para consulta.
+Lista todos os tribunais disponiveis para consulta com suas URLs.
 
-**Parâmetros:**
-- `filtro` (opcional): Filtrar por tipo de tribunal
-  - `"superiores"`: STF, STJ, TST, TSE, STM
-  - `"trf"`: Tribunais Regionais Federais (TRF1-TRF6)
-  - `"tj"`: Tribunais de Justiça Estaduais
-  - `"trt"`: Tribunais Regionais do Trabalho (TRT1-TRT24)
-  - `"tre"`: Tribunais Regionais Eleitorais
-  - `"todos"`: Todos os tribunais (padrão)
+**Parametros:**
+- `filtro` (opcional): Filtrar por tipo - "superiores", "trf", "tj", "trt", "tre" ou "todos"
 
-**Exemplo:**
-```json
-{
-  "filtro": "tj"
-}
-```
+## Formato NPU (Numeracao Unica de Processo)
 
----
-
-## Tribunais Disponíveis
-
-### Tribunais Superiores
-- `stf` - Supremo Tribunal Federal
-- `stj` - Superior Tribunal de Justiça
-- `tst` - Tribunal Superior do Trabalho
-- `tse` - Tribunal Superior Eleitoral
-- `stm` - Superior Tribunal Militar
-
-### Tribunais Regionais Federais
-- `trf1` a `trf6`
-
-### Tribunais de Justiça Estaduais
-- `tjac`, `tjal`, `tjam`, `tjap`, `tjba`, `tjce`, `tjdft`, `tjes`
-- `tjgo`, `tjma`, `tjmg`, `tjms`, `tjmt`, `tjpa`, `tjpb`, `tjpe`
-- `tjpi`, `tjpr`, `tjrj`, `tjrn`, `tjro`, `tjrr`, `tjrs`, `tjsc`
-- `tjse`, `tjsp`, `tjto`
-
-### Tribunais Regionais do Trabalho
-- `trt1` a `trt24`
-
-### Tribunais Regionais Eleitorais
-- `tre_ac` a `tre_to`
-
----
-
-## Formato NPU (Numeração Única de Processo)
-
-O número unificado do processo segue o padrão:
+O numero unificado do processo segue o padrao:
 
 ```
 NNNNNNN-DD.AAAA.J.TR.OOOO
 ```
 
 Onde:
-- `NNNNNNN`: Número sequencial (7 dígitos)
-- `DD`: Dígito verificador (2 dígitos)
-- `AAAA`: Ano do ajuizamento (4 dígitos)
-- `J`: Segmento do Judiciário (1 dígito)
-- `TR`: Tribunal (2 dígitos)
-- `OOOO`: Origem (4 dígitos)
+- `NNNNNNN`: Numero sequencial (7 digitos)
+- `DD`: Digito verificador (2 digitos)
+- `AAAA`: Ano do ajuizamento (4 digitos)
+- `J`: Segmento do Judiciario (1 digito)
+- `TR`: Tribunal (2 digitos)
+- `OOOO`: Origem (4 digitos)
 
 **Exemplo:** `0001234-56.2024.8.26.0100`
 
-A API aceita o número com ou sem formatação.
-
----
-
-## Códigos de Referência
-
-### Segmentos do Judiciário (dígito J)
+### Segmentos do Judiciario (digito J)
 - `1` - Supremo Tribunal Federal
-- `2` - Conselho Nacional de Justiça
-- `3` - Superior Tribunal de Justiça
-- `4` - Justiça Federal
-- `5` - Justiça do Trabalho
-- `6` - Justiça Eleitoral
-- `7` - Justiça Militar da União
-- `8` - Justiça Estadual
-- `9` - Justiça Militar Estadual
+- `2` - Conselho Nacional de Justica
+- `3` - Superior Tribunal de Justica
+- `4` - Justica Federal
+- `5` - Justica do Trabalho
+- `6` - Justica Eleitoral
+- `7` - Justica Militar da Uniao
+- `8` - Justica Estadual
+- `9` - Justica Militar Estadual
 
----
+## Formato de Resposta
 
-## Tratamento de Erros
-
-O skill retorna erros estruturados em formato JSON:
+Todas as ferramentas retornam um objeto JSON com instrucoes de navegacao:
 
 ```json
 {
-  "sucesso": false,
-  "erro": "Descrição do erro"
+  "tipo": "instrucoes_navegacao",
+  "descricao": "Consulta do processo 0001234-56.2024.8.26.0100 no TJSP",
+  "urls_sugeridas": [
+    {
+      "url": "https://esaj.tjsp.jus.br/cpopg/open.do",
+      "descricao": "Pagina de consulta processual do TJSP",
+      "prioridade": 1
+    }
+  ],
+  "passos": [
+    "1. Navegue ate a pagina de consulta do TJSP",
+    "2. Localize o campo de numero do processo",
+    "3. Preencha com o numero: 0001234-56.2024.8.26.0100",
+    "4. Clique no botao de consultar/pesquisar",
+    "5. Aguarde os resultados carregarem"
+  ],
+  "browser_script_sugerido": {
+    "actions": [
+      {"action": "goto", "url": "https://esaj.tjsp.jus.br/cpopg/open.do"},
+      {"action": "waitForLoad"},
+      {"action": "findAndFill", "selector": "input[name='numeroProcesso'], #numeroProcesso", "text": "0001234-56.2024.8.26.0100"},
+      {"action": "findAndClick", "selector": "button[type='submit'], input[type='submit'], .btn-pesquisar"},
+      {"action": "waitForNavigation"},
+      {"action": "snapshot"}
+    ]
+  },
+  "seletores_uteis": {
+    "campo_processo": "input[name='numeroProcesso'], #numeroProcesso, #numProcesso",
+    "botao_buscar": "button[type='submit'], input[type='submit'], .btn-pesquisar"
+  },
+  "dicas": [
+    "O TJSP usa o sistema e-SAJ",
+    "Alguns processos podem estar em segredo de justica",
+    "Se o processo nao for encontrado, verifique o numero e o tribunal"
+  ]
 }
 ```
 
-### Erros Comuns
+## Como Usar com dev-browser
 
-1. **API Key não configurada:**
-   ```
-   API Key do DataJud não configurada. Configure a variável de ambiente DATAJUD_API_KEY.
-   ```
+### Exemplo: Consultar Processo no TJSP
 
-2. **Processo não encontrado:**
-   ```
-   Processo 0000000-00.0000.0.00.0000 não encontrado no Tribunal de Justiça de São Paulo
-   ```
+1. Chamar `consultar_processo(tribunal="tjsp", numeroProcesso="1000000-00.2024.8.26.0100")`
+2. Receber instrucoes com URLs e passos
+3. Usar `browser_script` com as acoes sugeridas
+4. Analisar o snapshot para extrair os dados do processo
 
-3. **Tribunal inválido:**
-   ```
-   Erro na API DataJud: 404 Not Found. Verifique se o tribunal "xyz" é válido.
-   ```
+### Exemplo: Pesquisar por Nome da Parte
 
----
+1. Chamar `pesquisar_processos(tribunal="tjrj", nomeParte="Joao da Silva")`
+2. Usar as instrucoes para navegar ate o site do TJRJ
+3. Preencher o formulario de busca por nome
+4. Extrair a lista de processos encontrados
 
-## Execução Local
+## Tratamento de Captchas
+
+Muitos sites de tribunais possuem captchas. Quando encontrar um captcha:
+
+1. Use `browser_screenshot` para mostrar a tela ao usuario
+2. Solicite ao usuario para resolver o captcha manualmente
+3. Apos o usuario confirmar, continue com a automacao
+
+## Execucao Local
 
 ```bash
-# Instalar dependências
+# Instalar dependencias
 npm install
 
 # Executar em modo desenvolvimento
-DATAJUD_API_KEY=sua_chave npm start
+npm start
 
-# Compilar para produção
+# Compilar para producao
 npm run build
 ```
 
----
+## Referencias
 
-## Referências
-
-- [DataJud Wiki](https://datajud-wiki.cnj.jus.br/) - Documentação oficial da API
-- [CNJ](https://www.cnj.jus.br/) - Conselho Nacional de Justiça
-- [Tabelas Processuais Unificadas](https://www.cnj.jus.br/sgt/consulta_publica_classes.php) - Classes e assuntos
+- [CNJ - Numeracao Unica](https://www.cnj.jus.br/programas-e-acoes/numeracao-unica/)
+- [DataJud Wiki](https://datajud-wiki.cnj.jus.br/)
+- [Justica em Numeros](https://www.cnj.jus.br/pesquisas-judiciarias/justica-em-numeros/)

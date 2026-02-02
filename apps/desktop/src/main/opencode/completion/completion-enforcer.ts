@@ -42,10 +42,30 @@ export class CompletionEnforcer {
   private callbacks: CompletionEnforcerCallbacks;
   private currentTodos: TodoItem[] = [];
   private toolsWereUsed: boolean = false;
+  
+  /**
+   * AIDEV-NOTE: Timeout para garantir que o frontend seja desbloqueado mesmo se
+   * a continuation falhar silenciosamente. Sem este timeout, o input pode ficar
+   * travado indefinidamente se a continuation nao completar.
+   */
+  private continuationTimeout: ReturnType<typeof setTimeout> | null = null;
+  private readonly continuationTimeoutMs: number;
 
-  constructor(callbacks: CompletionEnforcerCallbacks, maxContinuationAttempts: number = 20) {
+  /**
+   * AIDEV-WARNING: O timeout padrao de 30 segundos e um valor conservador.
+   * Continuations legitimas podem demorar mais em tasks complexas.
+   * Ajuste conforme necessario baseado em observacoes de uso real.
+   */
+  private static readonly DEFAULT_CONTINUATION_TIMEOUT_MS = 30000;
+
+  constructor(
+    callbacks: CompletionEnforcerCallbacks,
+    maxContinuationAttempts: number = 20,
+    continuationTimeoutMs: number = CompletionEnforcer.DEFAULT_CONTINUATION_TIMEOUT_MS
+  ) {
     this.callbacks = callbacks;
     this.state = new CompletionState(maxContinuationAttempts);
+    this.continuationTimeoutMs = continuationTimeoutMs;
   }
 
   /**
@@ -171,6 +191,9 @@ export class CompletionEnforcer {
   /**
    * Called by adapter on process exit.
    * Triggers verification or continuation if pending.
+   * 
+   * AIDEV-WARNING: Este metodo inicia continuations que podem falhar silenciosamente.
+   * O timeout garante que onComplete() seja chamado mesmo se a continuation falhar.
    */
   async handleProcessExit(exitCode: number): Promise<void> {
     // Check if we need to continue after partial completion
@@ -186,6 +209,7 @@ export class CompletionEnforcer {
 
       if (!canContinue) {
         console.warn('[CompletionEnforcer] Max partial continuation attempts reached');
+        this.clearContinuationTimeout();
         this.callbacks.onComplete();
         return;
       }
@@ -198,6 +222,10 @@ export class CompletionEnforcer {
 
       // Reset tool-use flag so the next invocation is evaluated fresh
       this.toolsWereUsed = false;
+      
+      // AIDEV-NOTE: Inicia timeout antes de iniciar a continuation
+      this.startContinuationTimeout();
+      
       await this.callbacks.onStartContinuation(prompt);
       return;
     }
@@ -215,6 +243,10 @@ export class CompletionEnforcer {
 
       // Reset tool-use flag so the next invocation is evaluated fresh
       this.toolsWereUsed = false;
+      
+      // AIDEV-NOTE: Inicia timeout antes de iniciar a continuation
+      this.startContinuationTimeout();
+      
       await this.callbacks.onStartContinuation(prompt);
       return;
     }
@@ -225,6 +257,7 @@ export class CompletionEnforcer {
     // - BLOCKED: complete_task called with blocked status
     // - IDLE: process exited cleanly without triggering completion flow
     // - MAX_RETRIES_REACHED: exhausted all continuation attempts
+    this.clearContinuationTimeout();
     this.callbacks.onComplete();
   }
 
@@ -239,11 +272,65 @@ export class CompletionEnforcer {
 
   /**
    * Reset for new task.
+   * AIDEV-WARNING: Sempre limpa o timeout ao resetar para evitar vazamento de timers.
    */
   reset(): void {
+    this.clearContinuationTimeout();
     this.state.reset();
     this.currentTodos = [];
     this.toolsWereUsed = false;
+  }
+
+  /**
+   * Inicia o timeout para continuation.
+   * Se a continuation nao completar dentro do tempo limite, onComplete() sera chamado.
+   * 
+   * AIDEV-NOTE: O timeout e uma protecao contra continuations que falham silenciosamente,
+   * garantindo que o frontend seja desbloqueado.
+   */
+  private startContinuationTimeout(): void {
+    // Limpa qualquer timeout existente antes de iniciar um novo
+    this.clearContinuationTimeout();
+    
+    this.continuationTimeout = setTimeout(() => {
+      console.warn(
+        `[CompletionEnforcer] Continuation timeout reached after ${this.continuationTimeoutMs}ms. ` +
+        `State: ${CompletionFlowState[this.state.getState()]}, ` +
+        `attempts: ${this.state.getContinuationAttempts()}`
+      );
+      
+      this.callbacks.onDebug(
+        'continuation_timeout',
+        `Continuation timed out after ${this.continuationTimeoutMs}ms - forcing completion`,
+        { 
+          state: CompletionFlowState[this.state.getState()],
+          attempts: this.state.getContinuationAttempts()
+        }
+      );
+      
+      // Marca o estado como MAX_RETRIES_REACHED para indicar que o timeout foi acionado
+      // Isso evita que novas continuations sejam agendadas
+      this.state.markDone();
+      
+      // Emite o evento de complete para desbloquear o frontend
+      this.callbacks.onComplete();
+    }, this.continuationTimeoutMs);
+    
+    this.callbacks.onDebug(
+      'continuation_timeout_started',
+      `Started continuation timeout (${this.continuationTimeoutMs}ms)`,
+      { timeoutMs: this.continuationTimeoutMs }
+    );
+  }
+
+  /**
+   * Limpa o timeout de continuation se existir.
+   */
+  private clearContinuationTimeout(): void {
+    if (this.continuationTimeout) {
+      clearTimeout(this.continuationTimeout);
+      this.continuationTimeout = null;
+    }
   }
 
   private hasIncompleteTodos(): boolean {

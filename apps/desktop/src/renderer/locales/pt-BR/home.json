@@ -1,0 +1,52 @@
+{
+  "title": "O que voce vai realizar hoje?",
+  "examplePrompts": "Exemplos de comandos",
+  "placeholder": "Descreva uma tarefa e deixe a IA cuidar do resto",
+  "useCases": {
+    "consultarCodigo": {
+      "title": "Consultar Codigo",
+      "description": "Busque artigos de codigos como Civil, Penal, CDC e outros.",
+      "prompt": "Busque o artigo 121 do Codigo Penal e explique seu conteudo."
+    },
+    "pesquisarLei": {
+      "title": "Pesquisar Lei",
+      "description": "Pesquise leis federais pelo numero e ano.",
+      "prompt": "Pesquise a Lei 8.078/90 (Codigo de Defesa do Consumidor) e liste os principais direitos do consumidor."
+    },
+    "buscarSumula": {
+      "title": "Buscar Sumula",
+      "description": "Consulte sumulas do STF, STJ ou TST.",
+      "prompt": "Consulte a Sumula 37 do STJ sobre dano moral e explique sua aplicacao."
+    },
+    "consultarProcesso": {
+      "title": "Consultar Processo",
+      "description": "Busque processos judiciais pelo numero NPU.",
+      "prompt": "Consulte o processo 1000000-00.2024.8.26.0100 no TJSP e liste as ultimas movimentacoes."
+    },
+    "buscarJurisprudencia": {
+      "title": "Buscar Jurisprudencia",
+      "description": "Pesquise decisoes nos tribunais superiores.",
+      "prompt": "Busque jurisprudencia sobre dano moral por negativacao indevida no STJ."
+    },
+    "validarDocumento": {
+      "title": "Validar CPF/CNPJ",
+      "description": "Valide a estrutura de CPF ou CNPJ.",
+      "prompt": "Valide o CNPJ 00.000.000/0001-91 e consulte os dados da empresa na Receita Federal."
+    },
+    "consultarCep": {
+      "title": "Consultar CEP",
+      "description": "Busque endereco completo pelo CEP.",
+      "prompt": "Busque o endereco do CEP 01310-100 e informe logradouro, bairro e cidade."
+    },
+    "analisarPeca": {
+      "title": "Analisar Peca Juridica",
+      "description": "Extraia informacoes de peticoes e documentos.",
+      "prompt": "Analise a peticao inicial e identifique as partes, pedidos e fundamentos juridicos."
+    },
+    "extrairClausulas": {
+      "title": "Extrair Clausulas",
+      "description": "Liste clausulas de contratos por palavras-chave.",
+      "prompt": "Extraia as clausulas de rescisao e multa do contrato e resuma os pontos importantes."
+    }
+  }
+}

@@ -1,6 +1,27 @@
+/**
+ * @component ConversationListItem
+ * @description Item de lista de conversa/tarefa com suporte a i18n
+ *
+ * @context Usado na sidebar para listar tarefas/conversas
+ *
+ * @dependencies
+ * - react-i18next (useTranslation para traducoes)
+ * - react-router-dom (navegacao)
+ * - stores/taskStore (gerenciamento de tarefas)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/common.json (traducoes em portugues)
+ * - locales/en/common.json (traducoes em ingles)
+ * - Sidebar.tsx (componente pai)
+ *
+ * AIDEV-NOTE: Todas as strings sao traduzidas via namespace 'common'
+ * AIDEV-WARNING: Verificar chaves de traducao ao modificar textos
+ */
+
 'use client';
 
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { Task } from '@accomplish/shared';
 import { cn } from '@/lib/utils';
 import { Loader2, CheckCircle2, XCircle, Clock, Square, PauseCircle, X } from 'lucide-react';
@@ -11,6 +32,8 @@ interface ConversationListItemProps {
 }
 
 export default function ConversationListItem({ task }: ConversationListItemProps) {
+  // AIDEV-NOTE: Usar namespace 'common' para traducoes do ConversationListItem
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
   const isActive = location.pathname === `/execution/${task.id}`;
@@ -23,7 +46,7 @@ export default function ConversationListItem({ task }: ConversationListItemProps
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!window.confirm('Are you sure you want to delete this task?')) {
+    if (!window.confirm(t('conversation.confirmDelete'))) {
       return;
     }
 
@@ -68,9 +91,9 @@ export default function ConversationListItem({ task }: ConversationListItemProps
       title={task.summary || task.prompt}
       className={cn(
         'w-full text-left px-3 py-2 rounded-md text-sm transition-colors duration-200',
-        'text-zinc-700 hover:bg-accent hover:text-accent-foreground',
+        'text-zinc-700 hover:bg-primary/10 hover:text-primary',
         'flex items-center gap-2 group relative cursor-pointer',
-        isActive && 'bg-accent text-accent-foreground'
+        isActive && 'bg-primary text-primary-foreground'
       )}
     >
       {getStatusIcon()}
@@ -83,7 +106,7 @@ export default function ConversationListItem({ task }: ConversationListItemProps
           'text-zinc-400 hover:text-red-600 dark:hover:text-red-400',
           'shrink-0'
         )}
-        aria-label="Delete task"
+        aria-label={t('conversation.deleteTask')}
       >
         <X className="h-3 w-3" />
       </button>

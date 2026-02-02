@@ -1,5 +1,26 @@
+/**
+ * @component TaskHistory
+ * @description Exibe o historico de tarefas com suporte a internacionalizacao
+ *
+ * @context Usado na pagina de historico e na sidebar
+ *
+ * @dependencies
+ * - react-i18next (useTranslation para traducoes)
+ * - stores/taskStore (gerenciamento de tarefas)
+ * - react-router-dom (navegacao)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/common.json (traducoes em portugues)
+ * - locales/en/common.json (traducoes em ingles)
+ * - pages/History.tsx (pagina que usa este componente)
+ *
+ * AIDEV-NOTE: Todas as strings sao traduzidas via namespace 'common'
+ * AIDEV-WARNING: Verificar chaves de traducao ao modificar textos
+ */
+
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useTaskStore } from '../../stores/taskStore';
 import type { Task } from '@accomplish/shared';
 
@@ -9,6 +30,8 @@ interface TaskHistoryProps {
 }
 
 export default function TaskHistory({ limit, showTitle = true }: TaskHistoryProps) {
+  // AIDEV-NOTE: Usar namespace 'common' para traducoes do TaskHistory
+  const { t } = useTranslation('common');
   const { tasks, loadTasks, deleteTask, clearHistory } = useTaskStore();
 
   useEffect(() => {
@@ -20,7 +43,7 @@ export default function TaskHistory({ limit, showTitle = true }: TaskHistoryProp
   if (displayedTasks.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-text-muted">No tasks yet. Start by describing what you want to accomplish.</p>
+        <p className="text-text-muted">{t('taskHistory.noTasks')}</p>
       </div>
     );
   }
@@ -29,17 +52,17 @@ export default function TaskHistory({ limit, showTitle = true }: TaskHistoryProp
     <div>
       {showTitle && (
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-text">Recent Tasks</h2>
+          <h2 className="text-lg font-medium text-text">{t('taskHistory.recentTasks')}</h2>
           {tasks.length > 0 && !limit && (
             <button
               onClick={() => {
-                if (confirm('Are you sure you want to clear all task history?')) {
+                if (confirm(t('taskHistory.confirmClearAll'))) {
                   clearHistory();
                 }
               }}
               className="text-sm text-text-muted hover:text-danger transition-colors"
             >
-              Clear all
+              {t('taskHistory.clearAll')}
             </button>
           )}
         </div>
@@ -60,7 +83,7 @@ export default function TaskHistory({ limit, showTitle = true }: TaskHistoryProp
           to="/history"
           className="block mt-4 text-center text-sm text-text-muted hover:text-text transition-colors"
         >
-          View all {tasks.length} tasks
+          {t('taskHistory.viewAll', { count: tasks.length })}
         </Link>
       )}
     </div>
@@ -74,17 +97,21 @@ function TaskHistoryItem({
   task: Task;
   onDelete: () => void;
 }) {
-  const statusConfig: Record<string, { color: string; label: string }> = {
-    completed: { color: 'bg-success', label: 'Completed' },
-    running: { color: 'bg-accent-blue', label: 'Running' },
-    failed: { color: 'bg-danger', label: 'Failed' },
-    cancelled: { color: 'bg-text-muted', label: 'Cancelled' },
-    pending: { color: 'bg-warning', label: 'Pending' },
-    waiting_permission: { color: 'bg-warning', label: 'Waiting' },
+  // AIDEV-NOTE: Usar namespace 'common' para traducoes de status e labels
+  const { t } = useTranslation('common');
+
+  // AIDEV-NOTE: Mapeamento de status para chaves de traducao
+  const statusConfig: Record<string, { color: string; labelKey: string }> = {
+    completed: { color: 'bg-success', labelKey: 'taskHistory.status.completed' },
+    running: { color: 'bg-accent-blue', labelKey: 'taskHistory.status.running' },
+    failed: { color: 'bg-danger', labelKey: 'taskHistory.status.failed' },
+    cancelled: { color: 'bg-text-muted', labelKey: 'taskHistory.status.cancelled' },
+    pending: { color: 'bg-warning', labelKey: 'taskHistory.status.pending' },
+    waiting_permission: { color: 'bg-warning', labelKey: 'taskHistory.status.waiting' },
   };
 
   const config = statusConfig[task.status] || statusConfig.pending;
-  const timeAgo = getTimeAgo(task.createdAt);
+  const timeAgo = getTimeAgo(task.createdAt, t);
 
   return (
     <Link
@@ -97,14 +124,14 @@ function TaskHistoryItem({
           {task.summary || task.prompt}
         </p>
         <p className="text-xs text-text-muted mt-1">
-          {config.label} · {timeAgo} · {task.messages.length} messages
+          {t(config.labelKey)} · {timeAgo} · {t('taskHistory.messages', { count: task.messages.length })}
         </p>
       </div>
       <button
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (confirm('Delete this task?')) {
+          if (confirm(t('taskHistory.confirmDelete'))) {
             onDelete();
           }
         }}
@@ -118,7 +145,17 @@ function TaskHistoryItem({
   );
 }
 
-function getTimeAgo(dateString: string): string {
+/**
+ * @function getTimeAgo
+ * @description Retorna uma string traduzida representando o tempo decorrido
+ *
+ * @param dateString - Data no formato ISO string
+ * @param t - Funcao de traducao do i18next
+ * @returns String traduzida do tempo relativo
+ *
+ * AIDEV-NOTE: Usa chaves de traducao do namespace 'common.taskHistory.timeAgo'
+ */
+function getTimeAgo(dateString: string, t: (key: string, options?: Record<string, unknown>) => string): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -126,8 +163,8 @@ function getTimeAgo(dateString: string): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
+  if (diffMins < 1) return t('taskHistory.timeAgo.justNow');
+  if (diffMins < 60) return t('taskHistory.timeAgo.minutesAgo', { count: diffMins });
+  if (diffHours < 24) return t('taskHistory.timeAgo.hoursAgo', { count: diffHours });
+  return t('taskHistory.timeAgo.daysAgo', { count: diffDays });
 }

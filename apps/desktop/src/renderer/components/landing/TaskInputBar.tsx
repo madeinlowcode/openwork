@@ -1,6 +1,27 @@
 'use client';
 
+/**
+ * @component TaskInputBar
+ * @description Barra de input para tarefas com suporte a voz e transcricao
+ *
+ * @context Home page e paginas de execucao
+ *
+ * @dependencies
+ * - react-i18next (useTranslation para traducoes)
+ * - hooks/useSpeechInput (input por voz)
+ * - components/ui/SpeechInputButton (botao de gravacao)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/common.json (traducoes input.*, actions.*)
+ * - locales/en/common.json (traducoes input.*, actions.*)
+ * - Home.tsx (usa este componente)
+ *
+ * AIDEV-NOTE: Traducoes usam namespace 'common' com prefixos 'input.' e 'actions.'
+ * AIDEV-WARNING: Placeholder pode ser override via prop
+ */
+
 import { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getJurisiar } from '../../lib/jurisiar';
 import { CornerDownLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useSpeechInput } from '../../hooks/useSpeechInput';
@@ -31,7 +52,7 @@ export default function TaskInputBar({
   value,
   onChange,
   onSubmit,
-  placeholder = 'Assign a task or ask anything',
+  placeholder,
   isLoading = false,
   disabled = false,
   large = false,
@@ -39,10 +60,14 @@ export default function TaskInputBar({
   onOpenSpeechSettings,
   autoSubmitOnTranscription = true,
 }: TaskInputBarProps) {
+  const { t } = useTranslation();
   const isDisabled = disabled || isLoading;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingAutoSubmitRef = useRef<string | null>(null);
   const jurisiar = getJurisiar();
+
+  // AIDEV-NOTE: Usar placeholder traduzido se nenhum for fornecido
+  const resolvedPlaceholder = placeholder ?? t('input.placeholder');
 
   // Speech input hook
   const speechInput = useSpeechInput({
@@ -119,7 +144,7 @@ export default function TaskInputBar({
                 className="ml-2 underline hover:no-underline"
                 type="button"
               >
-                Retry
+                {t('actions.retry')}
               </button>
             )}
           </AlertDescription>
@@ -135,7 +160,7 @@ export default function TaskInputBar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           disabled={isDisabled || speechInput.isRecording}
           rows={1}
           className={`max-h-[200px] flex-1 resize-none bg-transparent text-foreground placeholder:text-gray-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${large ? 'text-[20px]' : 'text-sm'}`}
@@ -171,7 +196,7 @@ export default function TaskInputBar({
           }}
           disabled={!value.trim() || isDisabled || speechInput.isRecording}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all duration-200 ease-accomplish hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-          title="Submit"
+          title={t('actions.submit')}
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />

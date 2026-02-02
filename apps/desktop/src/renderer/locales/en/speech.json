@@ -1,0 +1,33 @@
+{
+  "settings": {
+    "title": "Speech-to-Text",
+    "description": "Enable voice input using ElevenLabs Speech-to-Text API"
+  },
+  "apiKey": {
+    "label": "ElevenLabs API Key",
+    "placeholder": "xi-...",
+    "placeholderConfigured": "••••••••••••••••",
+    "securityNote": "Your API key is stored securely in your system keychain.",
+    "save": "Save API Key",
+    "required": "API key is required",
+    "savedSuccess": "API key saved successfully"
+  },
+  "info": {
+    "needApiKey": "To use speech input, you need an ElevenLabs API key. Get one at",
+    "configured": "ElevenLabs API key is configured. Enter a new key below to replace it."
+  },
+  "usage": {
+    "title": "How to use:",
+    "clickMic": "Click the microphone button to start recording, click again to stop",
+    "holdAlt": "Hold Alt key to record voice input (push-to-talk mode)"
+  },
+  "button": {
+    "clickToSetup": "Click to set up voice input",
+    "recording": "Recording ({{duration}}) - Click to stop",
+    "transcribing": "Transcribing...",
+    "errorRetry": "Error during transcription - Click to retry",
+    "clickOrHold": "Click to record or hold Alt to record voice input",
+    "processing": "Processing...",
+    "retry": "Retry"
+  }
+}

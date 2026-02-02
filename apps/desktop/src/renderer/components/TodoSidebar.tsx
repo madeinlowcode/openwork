@@ -1,4 +1,24 @@
+/**
+ * @component TodoSidebar
+ * @description Sidebar que exibe a lista de tarefas com progresso e suporte a i18n
+ *
+ * @context Usado na pagina de execucao para mostrar subtarefas
+ *
+ * @dependencies
+ * - react-i18next (useTranslation para traducoes)
+ * - framer-motion (animacoes)
+ * - lucide-react (icones)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/common.json (traducoes em portugues)
+ * - locales/en/common.json (traducoes em ingles)
+ *
+ * AIDEV-NOTE: Todas as strings sao traduzidas via namespace 'common'
+ * AIDEV-WARNING: Verificar chaves de traducao ao modificar textos
+ */
+
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Circle, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TodoItem } from '@accomplish/shared';
@@ -8,6 +28,9 @@ interface TodoSidebarProps {
 }
 
 export function TodoSidebar({ todos }: TodoSidebarProps) {
+  // AIDEV-NOTE: Usar namespace 'common' para traducoes do TodoSidebar
+  const { t } = useTranslation('common');
+
   if (todos.length === 0) return null;
 
   const completed = todos.filter(t => t.status === 'completed').length;
@@ -25,9 +48,9 @@ export function TodoSidebar({ todos }: TodoSidebarProps) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-foreground">Tasks</span>
+          <span className="text-sm font-medium text-foreground">{t('todoSidebar.tasks')}</span>
           <span className="text-xs text-muted-foreground">
-            {completed} of {total}
+            {t('todoSidebar.progress', { completed, total })}
           </span>
         </div>
         {/* Progress bar */}

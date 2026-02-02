@@ -7,6 +7,7 @@ import {
   getOpenCodeCliVersion,
 } from '../opencode/adapter';
 import { getLogCollector } from '../logging';
+import { t } from '../i18n';
 import { getAzureEntraToken } from '../opencode/azure-token-manager';
 import {
   getTaskManager,
@@ -326,7 +327,7 @@ export function registerIPCHandlers(): void {
     // Check for ready provider before starting task (skip in E2E mock mode)
     // This is a backend safety check - the UI should also check before calling
     if (!isMockTaskEventsEnabled() && !hasReadyProvider()) {
-      throw new Error('No provider is ready. Please connect a provider and select a model in Settings.');
+      throw new Error(t('error.noProviderReady'));
     }
 
     // Initialize permission API server (once, when we have a window)
@@ -602,7 +603,7 @@ export function registerIPCHandlers(): void {
     // Check for ready provider before resuming session (skip in E2E mock mode)
     // This is a backend safety check - the UI should also check before calling
     if (!isMockTaskEventsEnabled() && !hasReadyProvider()) {
-      throw new Error('No provider is ready. Please connect a provider and select a model in Settings.');
+      throw new Error(t('error.noProviderReady'));
     }
 
     // Use existing task ID or create a new one
@@ -2434,7 +2435,7 @@ export function registerIPCHandlers(): void {
   // Logs: Export application logs
   handle('logs:export', async (event: IpcMainInvokeEvent) => {
     const window = BrowserWindow.fromWebContents(event.sender);
-    if (!window) throw new Error('No window found');
+    if (!window) throw new Error(t('error.noWindowFound'));
 
     // Flush pending logs before export
     const collector = getLogCollector();
@@ -2445,16 +2446,16 @@ export function registerIPCHandlers(): void {
 
     // Generate default filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const defaultFilename = `openwork-logs-${timestamp}.txt`;
+    const defaultFilename = `jurisiar-logs-${timestamp}.txt`;
 
     // Show save dialog
     const result = await dialog.showSaveDialog(window, {
-      title: 'Export Application Logs',
+      title: t('export.title'),
       defaultPath: defaultFilename,
       filters: [
-        { name: 'Text Files', extensions: ['txt'] },
-        { name: 'Log Files', extensions: ['log'] },
-        { name: 'All Files', extensions: ['*'] },
+        { name: t('export.filters.text'), extensions: ['txt'] },
+        { name: t('export.filters.log'), extensions: ['log'] },
+        { name: t('export.filters.all'), extensions: ['*'] },
       ],
     });
 
@@ -2469,7 +2470,7 @@ export function registerIPCHandlers(): void {
         fs.copyFileSync(logPath, result.filePath);
       } else {
         // No logs yet - create empty file with header
-        const header = `Openwork Application Logs\nExported: ${new Date().toISOString()}\nLog Directory: ${logDir}\n\nNo logs recorded yet.\n`;
+        const header = `${t('export.header')}\n${t('export.exported')}: ${new Date().toISOString()}\n${t('export.logDirectory')}: ${logDir}\n\n${t('export.noLogs')}\n`;
         fs.writeFileSync(result.filePath, header);
       }
 

@@ -1,6 +1,25 @@
+/**
+ * @component Header
+ * @description Cabecalho principal com logo e navegacao
+ *
+ * @context Layout principal - cabecalho superior
+ *
+ * @dependencies
+ * - react-router-dom (Link, useLocation)
+ * - react-i18next (useTranslation para traducoes)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/common.json (traducoes navigation.*)
+ * - locales/en/common.json (traducoes navigation.*)
+ *
+ * AIDEV-NOTE: Traducoes usam namespace 'common' com prefixo 'navigation.'
+ */
+
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export default function Header() {
+  const { t } = useTranslation();
   const location = useLocation();
   const pathname = location.pathname;
 
@@ -14,19 +33,19 @@ export default function Header() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <span className="text-base font-medium text-text">Openwork</span>
+          <span className="text-base font-medium text-text">Juris IA</span>
         </Link>
 
         {/* Navigation */}
         <nav className="no-drag flex items-center gap-1">
           <NavLink to="/" active={pathname === '/'}>
-            Home
+            {t('navigation.home')}
           </NavLink>
           <NavLink to="/history" active={pathname === '/history'}>
-            History
+            {t('navigation.history')}
           </NavLink>
           <NavLink to="/settings" active={pathname === '/settings'}>
-            Settings
+            {t('navigation.settings')}
           </NavLink>
         </nav>
 

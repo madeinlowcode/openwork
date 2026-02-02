@@ -11,9 +11,9 @@
   },
   "scripts": {
     "predev": "node scripts/check-deps.cjs",
-    "dev": "pnpm -F @accomplish/desktop dev",
+    "dev": "pnpm -F @jurisiar/desktop dev",
     "predev:clean": "node scripts/check-deps.cjs",
-    "dev:clean": "pnpm -F @accomplish/desktop dev:clean",
+    "dev:clean": "pnpm -F @jurisiar/desktop dev:clean",
     "postinstall": "node scripts/save-lockfile-hash.cjs",
     "build": "pnpm -r build",
     "build:desktop": "pnpm -F @accomplish/desktop build",
@@ -28,6 +28,7 @@
   "packageManager": "pnpm@9.15.0",
   "devDependencies": {
     "next": "^15.1.3",
+    "playwright": "^1.58.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

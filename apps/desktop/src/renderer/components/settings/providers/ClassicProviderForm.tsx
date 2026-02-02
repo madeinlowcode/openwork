@@ -1,6 +1,27 @@
 // apps/desktop/src/renderer/components/settings/providers/ClassicProviderForm.tsx
 
+/**
+ * @component ClassicProviderForm
+ * @description Formulario de conexao para provedores com autenticacao por API Key
+ *
+ * @context SettingsDialog > Providers tab > Provider selecionado
+ *
+ * @dependencies
+ * - react-i18next (useTranslation)
+ * - framer-motion (AnimatePresence, motion)
+ * - lib/jurisiar.ts (getJurisiar)
+ * - shared/ModelSelector, ConnectButton, ConnectedControls
+ *
+ * @relatedFiles
+ * - locales/pt-BR/providers.json (traducoes PT)
+ * - locales/en/providers.json (traducoes EN)
+ *
+ * AIDEV-WARNING: Gerencia chaves de API sensiveis
+ * AIDEV-NOTE: Usa namespace 'providers' para traducoes
+ */
+
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getJurisiar } from '@/lib/jurisiar';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
@@ -52,6 +73,9 @@ export function ClassicProviderForm({
   onModelChange,
   showModelError,
 }: ClassicProviderFormProps) {
+  // AIDEV-NOTE: Usa namespace 'providers' para traducoes
+  const { t } = useTranslation('providers');
+
   const [apiKey, setApiKey] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +101,7 @@ export function ClassicProviderForm({
 
   const handleConnect = async () => {
     if (!apiKey.trim()) {
-      setError('Please enter an API key');
+      setError(t('form.pleaseEnterApiKey'));
       return;
     }
 
@@ -95,7 +119,7 @@ export function ClassicProviderForm({
       const validation = await jurisiar.validateApiKeyForProvider(providerId, apiKey.trim());
 
       if (!validation.valid) {
-        setError(validation.error || 'Invalid API key');
+        setError(validation.error || t('connection.invalidApiKey'));
         setConnecting(false);
         return;
       }
@@ -124,7 +148,7 @@ export function ClassicProviderForm({
       onConnect(provider);
       setApiKey('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection failed');
+      setError(err instanceof Error ? err.message : t('connection.connectionFailed'));
     } finally {
       setConnecting(false);
     }
@@ -154,7 +178,7 @@ export function ClassicProviderForm({
         onConnect(provider);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed');
+      setError(err instanceof Error ? err.message : t('connection.signInFailed'));
     } finally {
       setSigningIn(false);
     }
@@ -176,20 +200,20 @@ export function ClassicProviderForm({
             className="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50 transition-colors"
           >
             <img src={openaiLogo} alt="" className="h-5 w-5" />
-            {signingIn ? 'Signing in...' : 'Login with OpenAI'}
+            {signingIn ? t('oauth.signingIn') : t('oauth.loginWith', { provider: 'OpenAI' })}
           </button>
 
           {/* Divider with "or" */}
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-sm text-muted-foreground">or</span>
+            <span className="text-sm text-muted-foreground">{t('form.or')}</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           {/* API Key section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-foreground">API Key</label>
+              <label className="text-sm font-medium text-foreground">{t('form.apiKey')}</label>
               {meta.helpUrl && (
                 <a
                   href={meta.helpUrl}
@@ -197,7 +221,7 @@ export function ClassicProviderForm({
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-primary underline"
                 >
-                  How can I find it?
+                  {t('form.howToFind')}
                 </a>
               )}
             </div>
@@ -206,7 +230,7 @@ export function ClassicProviderForm({
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter API Key"
+                placeholder={t('form.enterApiKey')}
                 disabled={connecting}
                 data-testid="api-key-input"
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2.5 text-sm disabled:opacity-50"
@@ -226,16 +250,16 @@ export function ClassicProviderForm({
 
           {/* Base URL section */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Base URL (optional)</label>
+            <label className="text-sm font-medium text-foreground">{t('form.baseUrl')}</label>
             <input
               type="text"
               value={openAiBaseUrl}
               onChange={(e) => setOpenAiBaseUrl(e.target.value)}
-              placeholder="https://api.openai.com/v1"
+              placeholder={t('form.baseUrlPlaceholder')}
               className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank for OpenAI. Set to use an OpenAI-compatible endpoint.
+              {t('form.baseUrlDescription')}
             </p>
           </div>
 
@@ -248,7 +272,7 @@ export function ClassicProviderForm({
       {!isOpenAI && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-foreground">API Key</label>
+            <label className="text-sm font-medium text-foreground">{t('form.apiKey')}</label>
             {meta.helpUrl && (
               <a
                 href={meta.helpUrl}
@@ -256,7 +280,7 @@ export function ClassicProviderForm({
                 rel="noopener noreferrer"
                 className="text-sm text-muted-foreground hover:text-primary underline"
               >
-                How can I find it?
+                {t('form.howToFind')}
               </a>
             )}
           </div>
@@ -277,7 +301,7 @@ export function ClassicProviderForm({
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter API Key"
+                    placeholder={t('form.enterApiKey')}
                     disabled={connecting}
                     data-testid="api-key-input"
                     className="flex-1 rounded-md border border-input bg-background px-3 py-2.5 text-sm disabled:opacity-50"

@@ -1,0 +1,30 @@
+{
+  "dialog": {
+    "title": "Configure Juris IA"
+  },
+  "tabs": {
+    "providers": "Providers",
+    "voice": "Voice Input",
+    "general": "General"
+  },
+  "warning": {
+    "noProviderReady": "No provider ready",
+    "noProviderReadyDescription": "You need to connect a provider and select a model before you can run tasks.",
+    "closeAnyway": "Close Anyway"
+  },
+  "debug": {
+    "title": "Debug Mode",
+    "description": "Show detailed backend logs in the task view.",
+    "enabled": "Debug mode is enabled. Backend logs will appear in the task view when running tasks."
+  },
+  "exportLogs": {
+    "title": "Export Logs"
+  },
+  "buttons": {
+    "done": "Done"
+  },
+  "language": {
+    "title": "Language",
+    "description": "Select interface language"
+  }
+}

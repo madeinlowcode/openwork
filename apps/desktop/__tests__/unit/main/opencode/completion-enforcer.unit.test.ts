@@ -129,4 +129,145 @@ describe('CompletionEnforcer', () => {
       expect(callbacks.onStartContinuation).toHaveBeenCalled();
     });
   });
+
+  describe('continuation timeout', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should start timeout when continuation is started', async () => {
+      // Create enforcer with short timeout for testing
+      const shortTimeoutEnforcer = new CompletionEnforcer(callbacks, 20, 1000);
+      
+      shortTimeoutEnforcer.markToolsUsed();
+      shortTimeoutEnforcer.handleStepFinish('stop');
+
+      await shortTimeoutEnforcer.handleProcessExit(0);
+
+      // Verify timeout debug event was emitted
+      expect(callbacks.onDebug).toHaveBeenCalledWith(
+        'continuation_timeout_started',
+        expect.stringContaining('Started continuation timeout'),
+        expect.objectContaining({ timeoutMs: 1000 })
+      );
+    });
+
+    it('should call onComplete when timeout expires', async () => {
+      // Create enforcer with short timeout for testing
+      const shortTimeoutEnforcer = new CompletionEnforcer(callbacks, 20, 100);
+      
+      shortTimeoutEnforcer.markToolsUsed();
+      shortTimeoutEnforcer.handleStepFinish('stop');
+
+      await shortTimeoutEnforcer.handleProcessExit(0);
+
+      // onComplete should not be called immediately
+      expect(callbacks.onComplete).not.toHaveBeenCalled();
+
+      // Fast forward past the timeout
+      vi.advanceTimersByTime(150);
+
+      // Now onComplete should have been called
+      expect(callbacks.onComplete).toHaveBeenCalled();
+      expect(callbacks.onDebug).toHaveBeenCalledWith(
+        'continuation_timeout',
+        expect.stringContaining('Continuation timed out'),
+        expect.any(Object)
+      );
+    });
+
+    it('should clear timeout on reset', async () => {
+      const shortTimeoutEnforcer = new CompletionEnforcer(callbacks, 20, 100);
+      
+      shortTimeoutEnforcer.markToolsUsed();
+      shortTimeoutEnforcer.handleStepFinish('stop');
+
+      await shortTimeoutEnforcer.handleProcessExit(0);
+
+      // Reset should clear the timeout
+      shortTimeoutEnforcer.reset();
+
+      // Fast forward past the timeout
+      vi.advanceTimersByTime(150);
+
+      // onComplete should NOT have been called by timeout (was cleared)
+      expect(callbacks.onComplete).not.toHaveBeenCalled();
+    });
+
+    it('should clear timeout when task completes normally', async () => {
+      const shortTimeoutEnforcer = new CompletionEnforcer(callbacks, 20, 100);
+      
+      shortTimeoutEnforcer.markToolsUsed();
+      shortTimeoutEnforcer.handleStepFinish('stop');
+
+      await shortTimeoutEnforcer.handleProcessExit(0);
+
+      // Simulate normal completion before timeout
+      shortTimeoutEnforcer.handleCompleteTaskDetection({
+        status: 'success',
+        summary: 'Done',
+        original_request_summary: 'Test'
+      });
+      
+      // This should clear the timeout
+      await shortTimeoutEnforcer.handleProcessExit(0);
+
+      // onComplete should have been called once by normal completion
+      expect(callbacks.onComplete).toHaveBeenCalledTimes(1);
+
+      // Fast forward past the timeout
+      vi.advanceTimersByTime(150);
+
+      // onComplete should still only have been called once (timeout was cleared)
+      expect(callbacks.onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use default timeout of 30 seconds', () => {
+      // Default timeout should be 30000ms
+      const defaultEnforcer = new CompletionEnforcer(callbacks);
+      
+      defaultEnforcer.markToolsUsed();
+      defaultEnforcer.handleStepFinish('stop');
+
+      defaultEnforcer.handleProcessExit(0);
+
+      expect(callbacks.onDebug).toHaveBeenCalledWith(
+        'continuation_timeout_started',
+        expect.stringContaining('Started continuation timeout'),
+        expect.objectContaining({ timeoutMs: 30000 })
+      );
+    });
+
+    it('should start timeout for partial continuation', async () => {
+      const shortTimeoutEnforcer = new CompletionEnforcer(callbacks, 20, 100);
+      
+      shortTimeoutEnforcer.markToolsUsed();
+      shortTimeoutEnforcer.handleCompleteTaskDetection({
+        status: 'partial',
+        summary: 'Did some work',
+        original_request_summary: 'Do all the work',
+        remaining_work: 'Finish the rest',
+      });
+      shortTimeoutEnforcer.handleStepFinish('stop');
+
+      await shortTimeoutEnforcer.handleProcessExit(0);
+
+      // Verify timeout was started
+      expect(callbacks.onDebug).toHaveBeenCalledWith(
+        'continuation_timeout_started',
+        expect.any(String),
+        expect.objectContaining({ timeoutMs: 100 })
+      );
+
+      // Fast forward past the timeout
+      vi.advanceTimersByTime(150);
+
+      // onComplete should have been called by timeout
+      expect(callbacks.onComplete).toHaveBeenCalled();
+    });
+  });
 });

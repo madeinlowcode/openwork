@@ -1,0 +1,86 @@
+{
+  "window": {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close"
+  },
+  "navigation": {
+    "home": "Home",
+    "history": "History",
+    "settings": "Settings",
+    "newTask": "New Task",
+    "searchTasks": "Search Tasks (Ctrl+K)",
+    "noConversations": "No conversations yet"
+  },
+  "actions": {
+    "submit": "Submit",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "copy": "Copy",
+    "loading": "Loading...",
+    "dismiss": "Dismiss",
+    "showLess": "Show less",
+    "showMore": "+{{count}} more"
+  },
+  "input": {
+    "placeholder": "Assign a task or ask anything"
+  },
+  "taskHistory": {
+    "noTasks": "No tasks yet. Start by describing what you want to accomplish.",
+    "recentTasks": "Recent Tasks",
+    "clearAll": "Clear all",
+    "confirmClearAll": "Are you sure you want to clear all task history?",
+    "confirmDelete": "Delete this task?",
+    "viewAll": "View all {{count}} tasks",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages",
+    "status": {
+      "completed": "Completed",
+      "running": "Running",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "pending": "Pending",
+      "waiting": "Waiting"
+    },
+    "timeAgo": {
+      "justNow": "just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    }
+  },
+  "todoSidebar": {
+    "tasks": "Tasks",
+    "progress": "{{completed}} of {{total}}"
+  },
+  "browserActions": {
+    "title": "Browser Actions",
+    "navigateTo": "Navigate to {{hostname}}",
+    "navigate": "Navigate",
+    "fillText": "Fill \"{{text}}\"",
+    "fillField": "Fill field",
+    "click": "Click {{target}}",
+    "pressKey": "Press {{key}}",
+    "capturePage": "Capture page",
+    "screenshot": "Screenshot",
+    "waitForElement": "Wait for element",
+    "waitForPage": "Wait for page",
+    "waitForNavigation": "Wait for navigation",
+    "runScript": "Run script"
+  },
+  "conversation": {
+    "confirmDelete": "Are you sure you want to delete this task?",
+    "deleteTask": "Delete task"
+  },
+  "auth": {
+    "sessionExpired": "{{provider}} Session Expired",
+    "reLogin": "Re-login to {{provider}}"
+  },
+  "historyPage": {
+    "title": "Task History"
+  }
+}

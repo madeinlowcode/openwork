@@ -20,6 +20,7 @@ import { FutureSchemaError } from './store/migrations/errors';
 import { stopAzureFoundryProxy } from './opencode/azure-foundry-proxy';
 import { stopMoonshotProxy } from './opencode/moonshot-proxy';
 import { initializeLogCollector, shutdownLogCollector, getLogCollector } from './logging';
+import { setLocale, t } from './i18n';
 
 // Local UI - no longer uses remote URL
 
@@ -50,7 +51,7 @@ if (process.env.CLEAN_START === '1') {
 }
 
 // Set app name before anything else (affects deep link dialogs)
-app.name = 'Jurisiar';
+app.name = 'Juris IA';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -100,7 +101,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    title: 'Jurisiar',
+    title: t('window.title'),
     icon: icon.isEmpty() ? undefined : icon,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 16 },
@@ -188,6 +189,9 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
+    // Initialize i18n with system locale
+    setLocale(app.getLocale());
+
     console.log('[Main] Electron app ready, version:', app.getVersion());
 
     // Migrate data from legacy userData paths if needed (one-time migration)
@@ -207,10 +211,10 @@ if (!gotTheLock) {
       if (err instanceof FutureSchemaError) {
         await dialog.showMessageBox({
           type: 'error',
-          title: 'Update Required',
-          message: `This data was created by a newer version of Jurisiar (schema v${err.storedVersion}).`,
-          detail: `Your app supports up to schema v${err.appVersion}. Please update Jurisiar to continue.`,
-          buttons: ['Quit'],
+          title: t('dialog.updateRequired.title'),
+          message: t('dialog.updateRequired.message', { storedVersion: err.storedVersion }),
+          detail: t('dialog.updateRequired.detail', { appVersion: err.appVersion }),
+          buttons: [t('dialog.updateRequired.quit')],
         });
         app.quit();
         return;

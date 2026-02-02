@@ -1,19 +1,28 @@
-# Skill: Consulta Legislacao
+# Skill: Consulta Legislacao (via Navegador)
 
-MCP Server para consulta de legislacao brasileira via API LexML do Senado Federal.
+MCP Server para consulta de legislacao brasileira usando navegacao web.
 
 ## Visao Geral
 
-Este skill permite consultar leis, codigos, decretos, medidas provisorias, jurisprudencia e sumulas usando a API publica do LexML (Rede de Informacao Legislativa e Juridica).
+Este skill fornece **instrucoes de navegacao** para o agente buscar leis, codigos, decretos, medidas provisorias, jurisprudencia e sumulas em portais oficiais do governo brasileiro.
 
-**API Base:** https://www.lexml.gov.br/busca/SRU
-**Autenticacao:** Nenhuma (API publica)
-**Protocolo:** SRU (Search/Retrieval via URL) com queries CQL
+**IMPORTANTE:** Esta skill NAO faz chamadas de API diretamente. Ela retorna instrucoes para o agente usar o **dev-browser** (MCP de automacao de navegador) para acessar os sites e extrair informacoes.
+
+## Sites Utilizados
+
+| Site | URL | Conteudo |
+|------|-----|----------|
+| Planalto | https://www.planalto.gov.br/ccivil_03/ | Legislacao federal (leis, decretos, MPs) |
+| Senado | https://www.senado.leg.br/atividade/const/constituicao-federal.asp | Constituicao Federal |
+| LexML | https://www.lexml.gov.br/ | Busca unificada de legislacao |
+| STF | https://portal.stf.jus.br/jurisprudencia/ | Jurisprudencia e sumulas STF |
+| STJ | https://scon.stj.jus.br/SCON/ | Jurisprudencia e sumulas STJ |
+| TST | https://jurisprudencia.tst.jus.br/ | Jurisprudencia e sumulas TST |
 
 ## Ferramentas Disponiveis
 
 ### 1. pesquisar_lei
-Pesquisa uma lei especifica pelo numero e ano.
+Retorna instrucoes para pesquisar uma lei especifica pelo numero e ano.
 
 **Parametros:**
 - `numero` (obrigatorio): Numero da lei
@@ -27,25 +36,24 @@ Pesquisa uma lei especifica pelo numero e ano.
   "ano": 1990
 }
 ```
-Retorna: Codigo de Defesa do Consumidor
+
+**Retorno:** Instrucoes de navegacao para encontrar a Lei 8.078/1990 (CDC)
 
 ### 2. pesquisar_legislacao
-Pesquisa legislacao por termo livre nas ementas.
+Retorna instrucoes para pesquisar legislacao por termo livre.
 
 **Parametros:**
 - `termo` (obrigatorio): Termo de busca
-- `maxResultados` (opcional): Quantidade maxima (padrao: 10, max: 50)
 
 **Exemplo:**
 ```json
 {
-  "termo": "direito do consumidor",
-  "maxResultados": 20
+  "termo": "direito do consumidor"
 }
 ```
 
 ### 3. consultar_codigo
-Consulta um dos principais codigos brasileiros.
+Retorna instrucoes para consultar um dos principais codigos brasileiros.
 
 **Codigos disponiveis:**
 | Sigla | Nome | Lei |
@@ -63,203 +71,132 @@ Consulta um dos principais codigos brasileiros.
 - `codigo` (obrigatorio): Sigla do codigo
 - `artigo` (opcional): Numero do artigo para filtrar
 
-**Exemplo:**
-```json
-{
-  "codigo": "cdc",
-  "artigo": 6
-}
-```
-Retorna: Art. 6 do CDC (direitos basicos do consumidor)
-
-### 4. buscar_jurisprudencia_termo
-Busca jurisprudencia por termo nas ementas.
+### 4. buscar_jurisprudencia
+Retorna instrucoes para buscar jurisprudencia nos tribunais superiores.
 
 **Parametros:**
 - `termo` (obrigatorio): Termo de busca
-- `maxResultados` (opcional): Quantidade maxima (padrao: 10, max: 50)
-
-**Exemplo:**
-```json
-{
-  "termo": "dano moral consumidor"
-}
-```
+- `tribunal` (opcional): stf, stj, tst (padrao: todos)
 
 ### 5. pesquisar_decreto
-Pesquisa um decreto especifico.
+Retorna instrucoes para pesquisar um decreto especifico.
 
 **Parametros:**
 - `numero` (obrigatorio): Numero do decreto
 - `ano` (obrigatorio): Ano do decreto
 
-**Exemplo:**
-```json
-{
-  "numero": 9579,
-  "ano": 2018
-}
-```
-
 ### 6. pesquisar_medida_provisoria
-Pesquisa uma medida provisoria.
+Retorna instrucoes para pesquisar uma medida provisoria.
 
 **Parametros:**
 - `numero` (obrigatorio): Numero da MP
 - `ano` (opcional): Ano da MP
 
-**Exemplo:**
-```json
-{
-  "numero": 1085,
-  "ano": 2021
-}
-```
-
 ### 7. pesquisar_sumula
-Pesquisa sumulas de tribunais superiores.
+Retorna instrucoes para pesquisar sumulas de tribunais superiores.
 
 **Parametros:**
 - `tribunal` (obrigatorio): stf, stj ou tst
 - `numero` (opcional): Numero da sumula
 
-**Exemplo:**
-```json
-{
-  "tribunal": "stf",
-  "numero": 323
-}
-```
-
 ### 8. pesquisar_constituicao
-Pesquisa na Constituicao Federal de 1988.
+Retorna instrucoes para consultar a Constituicao Federal de 1988.
 
 **Parametros:**
 - `artigo` (opcional): Numero do artigo
 
-**Exemplo:**
-```json
-{
-  "artigo": 5
-}
-```
-Retorna: Art. 5 da CF/88 (direitos fundamentais)
-
-### 9. pesquisar_avancada
-Pesquisa usando query CQL personalizada.
-
-**Parametros:**
-- `query` (obrigatorio): Query CQL
-- `maxResultados` (opcional): Quantidade maxima (padrao: 10, max: 50)
-
-**Sintaxe CQL:**
-- `tipoDocumento=lei AND numero=8078 AND ano=1990`
-- `ementa all "direito consumidor"`
-- `autoridade=supremo.tribunal.federal`
-- `localidade=br`
-
-**Exemplo:**
-```json
-{
-  "query": "tipoDocumento=lei AND ementa all \"protecao dados\" AND ano>=2018",
-  "maxResultados": 20
-}
-```
-
-### 10. listar_codigos_disponiveis
+### 9. listar_codigos_disponiveis
 Lista todos os codigos brasileiros disponiveis para consulta.
 
-### 11. listar_tipos_documento
-Lista todos os tipos de documento disponiveis para busca.
+### 10. listar_sites_legislacao
+Lista todos os sites oficiais de legislacao com suas URLs e descricoes.
 
 ## Formato de Resposta
 
-Todas as ferramentas retornam JSON com a seguinte estrutura:
+Todas as ferramentas retornam um objeto JSON com instrucoes de navegacao:
 
 ```json
 {
-  "sucesso": true,
-  "total": 5,
-  "quantidadeRetornada": 5,
-  "query": "tipoDocumento=lei AND numero=8078 AND ano=1990",
-  "registros": [
+  "tipo": "instrucoes_navegacao",
+  "descricao": "Pesquisa da Lei 8.078/1990 (Codigo de Defesa do Consumidor)",
+  "urls_sugeridas": [
     {
-      "titulo": "Lei no 8.078, de 11 de setembro de 1990",
-      "tipoDocumento": "lei",
-      "numero": "8078",
-      "ano": 1990,
-      "data": "1990-09-11",
-      "ementa": "Dispoe sobre a protecao do consumidor e da outras providencias.",
-      "autoridade": "federal",
-      "localidade": "br",
-      "url": "https://www.lexml.gov.br/urn/urn:lex:br:federal:lei:1990-09-11;8078",
-      "urlTextoIntegral": "http://...",
-      "descritores": ["consumidor", "protecao"],
-      "urn": "urn:lex:br:federal:lei:1990-09-11;8078"
+      "url": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm",
+      "descricao": "Link direto para a lei no Planalto (fonte oficial)",
+      "prioridade": 1
+    },
+    {
+      "url": "https://www.google.com/search?q=lei+8078+1990+texto+completo",
+      "descricao": "Busca no Google como alternativa",
+      "prioridade": 2
     }
+  ],
+  "passos": [
+    "1. Use browser_navigate para acessar a URL de prioridade 1",
+    "2. Use browser_snapshot para verificar se a pagina carregou",
+    "3. Se a pagina contem o texto da lei, extraia o conteudo relevante",
+    "4. Se a pagina nao carregar, tente a proxima URL da lista"
+  ],
+  "browser_script_sugerido": {
+    "actions": [
+      {"action": "goto", "url": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm"},
+      {"action": "waitForLoad"},
+      {"action": "snapshot"}
+    ]
+  },
+  "dicas": [
+    "O site do Planalto pode demorar para carregar",
+    "Se o link direto nao funcionar, use a busca no Google"
   ]
 }
 ```
 
-## Tipos de Documento
+## Como Usar com dev-browser
 
-| Codigo | Descricao |
-|--------|-----------|
-| lei | Lei (generica) |
-| lei.complementar | Lei Complementar |
-| lei.ordinaria | Lei Ordinaria |
-| decreto.lei | Decreto-Lei |
-| decreto | Decreto |
-| medida.provisoria | Medida Provisoria |
-| emenda.constitucional | Emenda Constitucional |
-| resolucao | Resolucao |
-| portaria | Portaria |
-| instrucao.normativa | Instrucao Normativa |
-| jurisprudencia | Jurisprudencia |
-| sumula | Sumula |
-| acordao | Acordao |
-| constituicao | Constituicao |
+O agente deve usar as ferramentas do dev-browser para executar as instrucoes:
 
-## Exemplos de Uso
+### Exemplo: Buscar Lei 8.078/1990
 
-### Buscar o Codigo de Defesa do Consumidor
-```
-pesquisar_lei(numero=8078, ano=1990)
+1. Chamar `pesquisar_lei(numero=8078, ano=1990)`
+2. Receber instrucoes com URLs e passos
+3. Usar `browser_script` com as acoes sugeridas:
+
+```json
+browser_script(actions=[
+  {"action": "goto", "url": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm"},
+  {"action": "waitForLoad"},
+  {"action": "snapshot"}
+])
 ```
 
-### Consultar Art. 5 da Constituicao Federal
-```
-pesquisar_constituicao(artigo=5)
-```
+4. Analisar o snapshot para extrair o texto da lei
+5. Se necessario, usar `browser_evaluate` para extrair texto especifico
 
-### Buscar jurisprudencia sobre dano moral
-```
-buscar_jurisprudencia_termo(termo="dano moral")
-```
+### Exemplo: Buscar Jurisprudencia no STF
 
-### Consultar sumula vinculante do STF
+1. Chamar `buscar_jurisprudencia(termo="dano moral", tribunal="stf")`
+2. Usar as instrucoes retornadas para navegar
+3. Preencher o formulario de busca usando `findAndFill`
+4. Extrair os resultados
+
+## Execucao Local
+
+```bash
+# Instalar dependencias
+npm install
+
+# Executar em modo desenvolvimento
+npm start
+
+# Compilar para producao
+npm run build
 ```
-pesquisar_sumula(tribunal="stf", numero=37)
-```
-
-### Pesquisa avancada por leis de protecao de dados
-```
-pesquisar_avancada(query="tipoDocumento=lei AND ementa all \"protecao dados\"")
-```
-
-## Configuracao
-
-Nenhuma configuracao necessaria. A API do LexML e publica e nao requer autenticacao.
-
-## Limitacoes
-
-- A API retorna metadados e ementas, nao o texto completo das leis
-- Para texto completo, use o link `urlTextoIntegral` retornado
-- Maximo de 50 resultados por consulta
-- Algumas buscas podem retornar muitos resultados; use filtros para refinar
 
 ## Links Uteis
 
+- [Portal da Legislacao - Planalto](https://www.planalto.gov.br/ccivil_03/)
+- [Senado Federal - Constituicao](https://www.senado.leg.br/atividade/const/constituicao-federal.asp)
 - [Portal LexML](https://www.lexml.gov.br/)
-- [Documentacao SRU](https://www.lexml.gov.br/conteudo/LexML-Brasil-Projeto-do-LEXML-SRU.pdf)
-- [Catalogo de URNs](https://projeto.lexml.gov.br/)
+- [STF Jurisprudencia](https://portal.stf.jus.br/jurisprudencia/)
+- [STJ Jurisprudencia](https://scon.stj.jus.br/SCON/)
+- [TST Jurisprudencia](https://jurisprudencia.tst.jus.br/)

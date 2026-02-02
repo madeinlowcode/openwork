@@ -1,7 +1,28 @@
 'use client';
 
+/**
+ * @component Sidebar
+ * @description Barra lateral com lista de conversas, botao de nova tarefa e configuracoes
+ *
+ * @context Layout principal - navegacao lateral esquerda
+ *
+ * @dependencies
+ * - react-i18next (useTranslation para traducoes)
+ * - stores/taskStore (gerenciamento de tarefas)
+ * - lib/jurisiar.ts (eventos de tarefas)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/common.json (traducoes navigation.*)
+ * - ConversationListItem.tsx (item da lista)
+ * - SettingsDialog.tsx (dialogo de configuracoes)
+ *
+ * AIDEV-WARNING: Componente critico de navegacao
+ * AIDEV-NOTE: Traducoes usam namespace 'common' com prefixo 'navigation.'
+ */
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/stores/taskStore';
 import { getJurisiar } from '@/lib/jurisiar';
@@ -11,9 +32,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ConversationListItem from './ConversationListItem';
 import SettingsDialog from './SettingsDialog';
 import { Settings, MessageSquarePlus, Search } from 'lucide-react';
-import logoImage from '/assets/logo-1.png';
+import logoImage from '/assets/juris-logo.png';
 
 export default function Sidebar() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
   const { tasks, loadTasks, updateTaskStatus, addTaskUpdate, openLauncher } = useTaskStore();
@@ -55,17 +77,17 @@ export default function Sidebar() {
             variant="default"
             size="sm"
             className="flex-1 justify-center gap-2"
-            title="New Task"
+            title={t('navigation.newTask')}
           >
             <MessageSquarePlus className="h-4 w-4" />
-            New Task
+            {t('navigation.newTask')}
           </Button>
           <Button
             onClick={openLauncher}
             variant="outline"
             size="sm"
             className="px-2"
-            title="Search Tasks (⌘K)"
+            title={t('navigation.searchTasks')}
           >
             <Search className="h-4 w-4" />
           </Button>
@@ -83,7 +105,7 @@ export default function Sidebar() {
                   exit={{ opacity: 0 }}
                   className="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
-                  No conversations yet
+                  {t('navigation.noConversations')}
                 </motion.div>
               ) : (
                 <motion.div
@@ -108,8 +130,8 @@ export default function Sidebar() {
           <div className="flex items-center">
             <img
               src={logoImage}
-              alt="Openwork"
-              style={{ height: '20px', paddingLeft: '6px' }}
+              alt="Jurisiar"
+              style={{ height: '32px', paddingLeft: '6px' }}
             />
           </div>
 
@@ -119,7 +141,7 @@ export default function Sidebar() {
             variant="ghost"
             size="icon"
             onClick={() => setShowSettings(true)}
-            title="Settings"
+            title={t('navigation.settings')}
           >
             <Settings className="h-4 w-4" />
           </Button>

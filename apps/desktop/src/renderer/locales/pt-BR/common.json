@@ -1,0 +1,86 @@
+{
+  "window": {
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "restore": "Restaurar",
+    "close": "Fechar"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "history": "Historico",
+    "settings": "Configuracoes",
+    "newTask": "Nova Tarefa",
+    "searchTasks": "Buscar Tarefas (Ctrl+K)",
+    "noConversations": "Nenhuma conversa ainda"
+  },
+  "actions": {
+    "submit": "Enviar",
+    "retry": "Tentar novamente",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "copy": "Copiar",
+    "loading": "Carregando...",
+    "dismiss": "Dispensar",
+    "showLess": "Mostrar menos",
+    "showMore": "+{{count}} mais"
+  },
+  "input": {
+    "placeholder": "Descreva uma tarefa ou faca uma pergunta"
+  },
+  "taskHistory": {
+    "noTasks": "Nenhuma tarefa ainda. Comece descrevendo o que voce quer realizar.",
+    "recentTasks": "Tarefas Recentes",
+    "clearAll": "Limpar tudo",
+    "confirmClearAll": "Tem certeza que deseja limpar todo o historico de tarefas?",
+    "confirmDelete": "Excluir esta tarefa?",
+    "viewAll": "Ver todas as {{count}} tarefas",
+    "messages_one": "{{count}} mensagem",
+    "messages_other": "{{count}} mensagens",
+    "status": {
+      "completed": "Concluida",
+      "running": "Executando",
+      "failed": "Falhou",
+      "cancelled": "Cancelada",
+      "pending": "Pendente",
+      "waiting": "Aguardando"
+    },
+    "timeAgo": {
+      "justNow": "agora mesmo",
+      "minutesAgo": "{{count}}min atras",
+      "hoursAgo": "{{count}}h atras",
+      "daysAgo": "{{count}}d atras"
+    }
+  },
+  "todoSidebar": {
+    "tasks": "Tarefas",
+    "progress": "{{completed}} de {{total}}"
+  },
+  "browserActions": {
+    "title": "Acoes do Navegador",
+    "navigateTo": "Navegar para {{hostname}}",
+    "navigate": "Navegar",
+    "fillText": "Preencher \"{{text}}\"",
+    "fillField": "Preencher campo",
+    "click": "Clicar {{target}}",
+    "pressKey": "Pressionar {{key}}",
+    "capturePage": "Capturar pagina",
+    "screenshot": "Captura de tela",
+    "waitForElement": "Aguardar elemento",
+    "waitForPage": "Aguardar pagina",
+    "waitForNavigation": "Aguardar navegacao",
+    "runScript": "Executar script"
+  },
+  "conversation": {
+    "confirmDelete": "Tem certeza que deseja excluir esta tarefa?",
+    "deleteTask": "Excluir tarefa"
+  },
+  "auth": {
+    "sessionExpired": "Sessao do {{provider}} Expirada",
+    "reLogin": "Entrar novamente no {{provider}}"
+  },
+  "historyPage": {
+    "title": "Historico de Tarefas"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "title": "What will you accomplish today?",
+  "examplePrompts": "Example prompts",
+  "placeholder": "Describe a task and let AI handle the rest",
+  "useCases": {
+    "consultarCodigo": {
+      "title": "Search Legal Code",
+      "description": "Search articles from Civil, Penal, Consumer codes and more.",
+      "prompt": "Search for article 121 of the Penal Code and explain its content."
+    },
+    "pesquisarLei": {
+      "title": "Search Law",
+      "description": "Search federal laws by number and year.",
+      "prompt": "Search for Law 8.078/90 (Consumer Defense Code) and list the main consumer rights."
+    },
+    "buscarSumula": {
+      "title": "Search Precedent",
+      "description": "Search precedents from STF, STJ or TST courts.",
+      "prompt": "Search for Precedent 37 from STJ about moral damages and explain its application."
+    },
+    "consultarProcesso": {
+      "title": "Search Case",
+      "description": "Search court cases by NPU number.",
+      "prompt": "Search for case 1000000-00.2024.8.26.0100 at TJSP and list the latest movements."
+    },
+    "buscarJurisprudencia": {
+      "title": "Search Case Law",
+      "description": "Search decisions in superior courts.",
+      "prompt": "Search case law about moral damages for improper credit denial at STJ."
+    },
+    "validarDocumento": {
+      "title": "Validate CPF/CNPJ",
+      "description": "Validate CPF or CNPJ structure.",
+      "prompt": "Validate CNPJ 00.000.000/0001-91 and search company data at Federal Revenue."
+    },
+    "consultarCep": {
+      "title": "Search ZIP Code",
+      "description": "Search full address by ZIP code.",
+      "prompt": "Search the address for ZIP code 01310-100 and provide street, neighborhood and city."
+    },
+    "analisarPeca": {
+      "title": "Analyze Legal Document",
+      "description": "Extract information from petitions and documents.",
+      "prompt": "Analyze the initial petition and identify parties, claims and legal grounds."
+    },
+    "extrairClausulas": {
+      "title": "Extract Clauses",
+      "description": "List contract clauses by keywords.",
+      "prompt": "Extract termination and penalty clauses from the contract and summarize key points."
+    }
+  }
+}

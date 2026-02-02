@@ -1,7 +1,29 @@
 'use client';
 
+/**
+ * @component SettingsDialog
+ * @description Dialog modal para configurar provedores de IA e entrada de voz
+ *
+ * @context Layout - acessivel via Sidebar ou Header
+ *
+ * @dependencies
+ * - react-i18next (useTranslation)
+ * - framer-motion (AnimatePresence, motion)
+ * - components/settings/ProviderGrid.tsx
+ * - components/settings/ProviderSettingsPanel.tsx
+ * - components/settings/SpeechSettingsForm.tsx
+ *
+ * @relatedFiles
+ * - locales/pt-BR/settings.json (traducoes PT)
+ * - locales/en/settings.json (traducoes EN)
+ *
+ * AIDEV-WARNING: Este componente gerencia o fluxo de conexao de provedores
+ * AIDEV-NOTE: Usa namespace 'settings' para traducoes
+ */
+
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import { getJurisiar } from '@/lib/jurisiar';
 import {
@@ -16,6 +38,7 @@ import { useProviderSettings } from '@/components/settings/hooks/useProviderSett
 import { ProviderGrid } from '@/components/settings/ProviderGrid';
 import { ProviderSettingsPanel } from '@/components/settings/ProviderSettingsPanel';
 import { SpeechSettingsForm } from '@/components/settings/SpeechSettingsForm';
+import { LanguageSelector } from '@/components/settings/LanguageSelector';
 
 // First 4 providers shown in collapsed view (matches PROVIDER_ORDER in ProviderGrid)
 const FIRST_FOUR_PROVIDERS: ProviderId[] = ['openai', 'anthropic', 'google', 'bedrock'];
@@ -38,11 +61,16 @@ export default function SettingsDialog({
   initialProvider,
   initialTab = 'providers',
 }: SettingsDialogProps) {
+  // AIDEV-NOTE: Tipos de tabs disponiveis no dialog
+  type TabType = 'providers' | 'voice' | 'general';
+  // AIDEV-NOTE: Usa namespace 'settings' para traducoes do dialog
+  const { t } = useTranslation('settings');
+
   const [selectedProvider, setSelectedProvider] = useState<ProviderId | null>(null);
   const [gridExpanded, setGridExpanded] = useState(false);
   const [closeWarning, setCloseWarning] = useState(false);
   const [showModelError, setShowModelError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'providers' | 'voice'>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab as TabType);
 
   const {
     settings,
@@ -263,7 +291,7 @@ export default function SettingsDialog({
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>Set up Openwork</DialogTitle>
+            <DialogTitle>{t('dialog.title')}</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -281,7 +309,7 @@ export default function SettingsDialog({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Set up Openwork</DialogTitle>
+          <DialogTitle>{t('dialog.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
@@ -295,7 +323,7 @@ export default function SettingsDialog({
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Providers
+              {t('tabs.providers')}
             </button>
             <button
               onClick={() => setActiveTab('voice')}
@@ -305,7 +333,17 @@ export default function SettingsDialog({
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Voice Input
+              {t('tabs.voice')}
+            </button>
+            <button
+              onClick={() => setActiveTab('general')}
+              className={`pb-3 px-1 font-medium text-sm transition-colors ${
+                activeTab === 'general'
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t('tabs.general')}
             </button>
           </div>
 
@@ -328,16 +366,16 @@ export default function SettingsDialog({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-warning">No provider ready</p>
+                        <p className="text-sm font-medium text-warning">{t('warning.noProviderReady')}</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          You need to connect a provider and select a model before you can run tasks.
+                          {t('warning.noProviderReadyDescription')}
                         </p>
                         <div className="mt-3 flex gap-2">
                           <button
                             onClick={handleForceClose}
                             className="rounded-md px-3 py-1.5 text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/80"
                           >
-                            Close Anyway
+                            {t('warning.closeAnyway')}
                           </button>
                         </div>
                       </div>
@@ -393,9 +431,9 @@ export default function SettingsDialog({
                     <div className="rounded-lg border border-border bg-card p-5">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-medium text-foreground">Debug Mode</div>
+                          <div className="font-medium text-foreground">{t('debug.title')}</div>
                           <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
-                            Show detailed backend logs in the task view.
+                            {t('debug.description')}
                           </p>
                         </div>
                         <div className="ml-4 flex items-center gap-3">
@@ -444,8 +482,7 @@ export default function SettingsDialog({
                       {debugMode && (
                         <div className="mt-4 rounded-xl bg-warning/10 p-3.5">
                           <p className="text-sm text-warning">
-                            Debug mode is enabled. Backend logs will appear in the task view
-                            when running tasks.
+                            {t('debug.enabled')}
                           </p>
                         </div>
                       )}
@@ -463,6 +500,87 @@ export default function SettingsDialog({
             </div>
           )}
 
+          {/* General Tab */}
+          {activeTab === 'general' && (
+            <div className="space-y-6">
+              {/* Language Selection */}
+              <div className="rounded-lg border border-border bg-card p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium text-foreground">{t('language.title')}</div>
+                    <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                      {t('language.description')}
+                    </p>
+                  </div>
+                  <div className="ml-4">
+                    <LanguageSelector />
+                  </div>
+                </div>
+              </div>
+
+              {/* Debug Mode Section */}
+              <div className="rounded-lg border border-border bg-card p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium text-foreground">{t('debug.title')}</div>
+                    <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                      {t('debug.description')}
+                    </p>
+                  </div>
+                  <div className="ml-4 flex items-center gap-3">
+                    {/* Debug Toggle */}
+                    <button
+                      data-testid="settings-debug-toggle-general"
+                      onClick={handleDebugToggle}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-accomplish ${debugMode ? 'bg-primary' : 'bg-muted'
+                        }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-accomplish ${debugMode ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                      />
+                    </button>
+                    {/* Export Logs Button */}
+                    <button
+                      onClick={handleExportLogs}
+                      disabled={exportStatus === 'exporting'}
+                      title={t('exportLogs.title')}
+                      className={`rounded-md p-1.5 transition-colors ${
+                        exportStatus === 'success'
+                          ? 'text-green-500'
+                          : exportStatus === 'error'
+                          ? 'text-destructive'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {exportStatus === 'exporting' ? (
+                        <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      ) : exportStatus === 'success' ? (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                {debugMode && (
+                  <div className="mt-4 rounded-xl bg-warning/10 p-3.5">
+                    <p className="text-sm text-warning">
+                      {t('debug.enabled')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Done Button */}
           <div className="flex justify-end">
             <button
@@ -473,7 +591,7 @@ export default function SettingsDialog({
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Done
+              {t('buttons.done')}
             </button>
           </div>
         </div>

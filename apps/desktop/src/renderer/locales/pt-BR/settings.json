@@ -1,0 +1,30 @@
+{
+  "dialog": {
+    "title": "Configurar Juris IA"
+  },
+  "tabs": {
+    "providers": "Provedores",
+    "voice": "Entrada de Voz",
+    "general": "Geral"
+  },
+  "warning": {
+    "noProviderReady": "Nenhum provedor pronto",
+    "noProviderReadyDescription": "Voce precisa conectar um provedor e selecionar um modelo antes de executar tarefas.",
+    "closeAnyway": "Fechar Assim Mesmo"
+  },
+  "debug": {
+    "title": "Modo de Depuracao",
+    "description": "Mostrar logs detalhados do backend na visualizacao de tarefas.",
+    "enabled": "O modo de depuracao esta ativado. Os logs do backend aparecerao na visualizacao de tarefas ao executar tarefas."
+  },
+  "exportLogs": {
+    "title": "Exportar Logs"
+  },
+  "buttons": {
+    "done": "Concluido"
+  },
+  "language": {
+    "title": "Idioma",
+    "description": "Selecione o idioma da interface"
+  }
+}

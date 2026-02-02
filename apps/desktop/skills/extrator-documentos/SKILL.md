@@ -1,6 +1,11 @@
-# Skill: Extrator de Documentos Jurídicos
+# Skill: Extrator de Documentos Juridicos
 
-MCP Server para extração de texto e análise de documentos PDF e DOCX jurídicos. Permite extrair conteúdo, analisar peças processuais, identificar cláusulas contratuais e comparar documentos.
+MCP Server para extracao de texto e analise de documentos PDF e DOCX juridicos.
+
+## Nota: Funcionamento Local
+
+**Esta skill funciona LOCALMENTE**, sem necessidade de acesso a internet ou navegador.
+Ela e complementar as outras skills juridicas (consulta-legislacao, consulta-processos, consulta-cadastros) que usam o dev-browser para navegacao web. Permite extrair conteúdo, analisar peças processuais, identificar cláusulas contratuais e comparar documentos.
 
 ## Formatos Suportados
 

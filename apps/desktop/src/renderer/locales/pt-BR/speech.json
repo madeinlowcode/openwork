@@ -1,0 +1,33 @@
+{
+  "settings": {
+    "title": "Voz para Texto",
+    "description": "Ativar entrada de voz usando a API de Voz para Texto da ElevenLabs"
+  },
+  "apiKey": {
+    "label": "Chave de API ElevenLabs",
+    "placeholder": "xi-...",
+    "placeholderConfigured": "••••••••••••••••",
+    "securityNote": "Sua chave de API e armazenada com seguranca no chaveiro do sistema.",
+    "save": "Salvar Chave de API",
+    "required": "Chave de API e obrigatoria",
+    "savedSuccess": "Chave de API salva com sucesso"
+  },
+  "info": {
+    "needApiKey": "Para usar entrada de voz, voce precisa de uma chave de API da ElevenLabs. Obtenha uma em",
+    "configured": "A chave de API da ElevenLabs esta configurada. Digite uma nova chave abaixo para substitui-la."
+  },
+  "usage": {
+    "title": "Como usar:",
+    "clickMic": "Clique no botao do microfone para iniciar a gravacao, clique novamente para parar",
+    "holdAlt": "Segure a tecla Alt para gravar entrada de voz (modo push-to-talk)"
+  },
+  "button": {
+    "clickToSetup": "Clique para configurar entrada de voz",
+    "recording": "Gravando ({{duration}}) - Clique para parar",
+    "transcribing": "Transcrevendo...",
+    "errorRetry": "Erro na transcricao - Clique para tentar novamente",
+    "clickOrHold": "Clique para gravar ou segure Alt para entrada de voz",
+    "processing": "Processando...",
+    "retry": "Tentar novamente"
+  }
+}

@@ -1,5 +1,25 @@
+/**
+ * @component BrowserScriptCard
+ * @description Exibe acoes do navegador em formato de chips com suporte a i18n
+ *
+ * @context Usado na pagina de execucao para mostrar acoes do browser automation
+ *
+ * @dependencies
+ * - react-i18next (useTranslation para traducoes)
+ * - framer-motion (animacoes)
+ * - lucide-react (icones)
+ *
+ * @relatedFiles
+ * - locales/pt-BR/common.json (traducoes em portugues)
+ * - locales/en/common.json (traducoes em ingles)
+ *
+ * AIDEV-NOTE: Todas as strings sao traduzidas via namespace 'common'
+ * AIDEV-WARNING: Verificar chaves de traducao ao modificar textos de acoes
+ */
+
 import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   Globe,
   TextCursor,
@@ -56,8 +76,16 @@ const ACTION_ICONS: Record<string, typeof Globe> = {
   evaluate: Code,
 };
 
-// Format action to human-readable label
-function formatActionLabel(action: BrowserAction): string {
+/**
+ * @function formatActionLabel
+ * @description Formata a label de uma acao do navegador usando traducoes
+ *
+ * AIDEV-NOTE: Usa chaves de traducao do namespace 'common.browserActions'
+ */
+function formatActionLabel(
+  action: BrowserAction,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   const maxLength = 25;
   let label = '';
 
@@ -65,16 +93,16 @@ function formatActionLabel(action: BrowserAction): string {
     case 'goto': {
       try {
         const hostname = new URL(action.url || '').hostname.replace('www.', '');
-        label = `Navigate to ${hostname}`;
+        label = t('browserActions.navigateTo', { hostname });
       } catch {
-        label = 'Navigate';
+        label = t('browserActions.navigate');
       }
       break;
     }
     case 'findAndFill':
     case 'fillByRef': {
       const text = action.text || '';
-      label = text ? `Fill "${text}"` : 'Fill field';
+      label = text ? t('browserActions.fillText', { text }) : t('browserActions.fillField');
       break;
     }
     case 'findAndClick':
@@ -82,29 +110,29 @@ function formatActionLabel(action: BrowserAction): string {
       const target = action.ref || action.selector || 'element';
       // Simplify selector for display
       const simplified = target.length > 15 ? target.slice(0, 12) + '...' : target;
-      label = `Click ${simplified}`;
+      label = t('browserActions.click', { target: simplified });
       break;
     }
     case 'keyboard':
-      label = `Press ${action.key || 'key'}`;
+      label = t('browserActions.pressKey', { key: action.key || 'key' });
       break;
     case 'snapshot':
-      label = 'Capture page';
+      label = t('browserActions.capturePage');
       break;
     case 'screenshot':
-      label = 'Screenshot';
+      label = t('browserActions.screenshot');
       break;
     case 'waitForSelector':
-      label = 'Wait for element';
+      label = t('browserActions.waitForElement');
       break;
     case 'waitForLoad':
-      label = 'Wait for page';
+      label = t('browserActions.waitForPage');
       break;
     case 'waitForNavigation':
-      label = 'Wait for navigation';
+      label = t('browserActions.waitForNavigation');
       break;
     case 'evaluate':
-      label = 'Run script';
+      label = t('browserActions.runScript');
       break;
     default:
       label = action.action;
@@ -118,9 +146,9 @@ function formatActionLabel(action: BrowserAction): string {
 }
 
 // Single action chip component
-function ActionChip({ action }: { action: BrowserAction }) {
+function ActionChip({ action, t }: { action: BrowserAction; t: (key: string, options?: Record<string, unknown>) => string }) {
   const Icon = ACTION_ICONS[action.action] || Code;
-  const label = formatActionLabel(action);
+  const label = formatActionLabel(action, t);
 
   return (
     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-muted text-muted-foreground border border-border whitespace-nowrap">
@@ -177,6 +205,8 @@ export const BrowserScriptCard = memo(function BrowserScriptCard({
   actions,
   isRunning = false,
 }: BrowserScriptCardProps) {
+  // AIDEV-NOTE: Usar namespace 'common' para traducoes do BrowserScriptCard
+  const { t } = useTranslation('common');
   const [expanded, setExpanded] = useState(false);
 
   // Early return for empty actions
@@ -199,7 +229,7 @@ export const BrowserScriptCard = memo(function BrowserScriptCard({
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <Globe className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium text-primary">Browser Actions</span>
+        <span className="text-sm font-medium text-primary">{t('browserActions.title')}</span>
         {isRunning && <SpinningIcon className="h-3.5 w-3.5 ml-auto" />}
       </div>
 
@@ -216,7 +246,7 @@ export const BrowserScriptCard = memo(function BrowserScriptCard({
               className="flex items-center gap-1.5"
             >
               {index > 0 && <Arrow />}
-              <ActionChip action={action} />
+              <ActionChip action={action} t={t} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -228,7 +258,7 @@ export const BrowserScriptCard = memo(function BrowserScriptCard({
             <button
               onClick={() => setExpanded(!expanded)}
               aria-expanded={expanded}
-              aria-label={expanded ? 'Show fewer actions' : `Show ${hiddenCount} more actions`}
+              aria-label={expanded ? t('actions.showLess') : t('actions.showMore', { count: hiddenCount })}
               className={cn(
                 'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium',
                 'bg-primary/10 text-primary cursor-pointer',
@@ -236,7 +266,7 @@ export const BrowserScriptCard = memo(function BrowserScriptCard({
                 'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1'
               )}
             >
-              {expanded ? 'Show less' : `+${hiddenCount} more`}
+              {expanded ? t('actions.showLess') : t('actions.showMore', { count: hiddenCount })}
             </button>
           </>
         )}

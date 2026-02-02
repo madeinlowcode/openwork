@@ -1,0 +1,12 @@
+{
+  "task": {
+    "queued": "Queued",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled",
+    "stopped": "Stopped",
+    "pending": "Pending",
+    "waiting": "Waiting"
+  }
+}

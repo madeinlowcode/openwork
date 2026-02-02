@@ -1,13 +1,28 @@
 /**
- * Speech Input Button Component
+ * @component SpeechInputButton
+ * @description Botao de microfone para entrada de voz com suporte a gravacao e transcricao
  *
- * A microphone button that toggles recording and shows status during transcription.
- * Supports two modes:
- * 1. Click toggle: click to start, click again to stop and transcribe
- * 2. Push-to-talk: hold Alt (configurable) to record, release to transcribe
+ * Suporta dois modos:
+ * 1. Toggle: clique para iniciar, clique novamente para parar e transcrever
+ * 2. Push-to-talk: segure Alt para gravar, solte para transcrever
+ *
+ * @context TaskInputBar, qualquer campo de entrada de texto
+ *
+ * @dependencies
+ * - react-i18next (useTranslation)
+ * - lucide-react (Mic, Loader2, AlertCircle)
+ * - components/ui/tooltip.tsx
+ *
+ * @relatedFiles
+ * - locales/pt-BR/speech.json (traducoes PT)
+ * - locales/en/speech.json (traducoes EN)
+ *
+ * AIDEV-WARNING: Gerencia estado de gravacao de audio
+ * AIDEV-NOTE: Usa namespace 'speech' para traducoes
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Mic, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -100,6 +115,9 @@ export function SpeechInputButton({
   className,
   tooltipText,
 }: SpeechInputButtonProps) {
+  // AIDEV-NOTE: Usa namespace 'speech' para traducoes
+  const { t } = useTranslation('speech');
+
   const sizeClasses = useMemo(
     () => {
       switch (size) {
@@ -141,12 +159,12 @@ export function SpeechInputButton({
 
   const tooltipLabel = useMemo(() => {
     if (tooltipText) return tooltipText;
-    if (!isConfigured) return 'Click to set up voice input';
-    if (isRecording) return `Recording (${formatDuration(recordingDuration)}) - Click to stop`;
-    if (isTranscribing) return 'Transcribing...';
-    if (error) return 'Error during transcription - Click to retry';
-    return 'Click to record or hold Alt to record voice input';
-  }, [tooltipText, isConfigured, isRecording, isTranscribing, error, recordingDuration]);
+    if (!isConfigured) return t('button.clickToSetup');
+    if (isRecording) return t('button.recording', { duration: formatDuration(recordingDuration) });
+    if (isTranscribing) return t('button.transcribing');
+    if (error) return t('button.errorRetry');
+    return t('button.clickOrHold');
+  }, [tooltipText, isConfigured, isRecording, isTranscribing, error, recordingDuration, t]);
 
   const handleClick = React.useCallback(
     (e: React.MouseEvent) => {
@@ -210,14 +228,14 @@ export function SpeechInputButton({
       {/* Status indicator */}
       {isTranscribing && (
         <div className="text-xs text-blue-600 dark:text-blue-400 shrink-0">
-          Processing...
+          {t('button.processing')}
         </div>
       )}
 
       {/* Error retry helper text */}
       {error && !isRecording && !isTranscribing && (
         <div className="text-xs text-orange-600 dark:text-orange-400 shrink-0">
-          Retry
+          {t('button.retry')}
         </div>
       )}
     </div>

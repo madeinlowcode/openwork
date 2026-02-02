@@ -1,0 +1,38 @@
+{
+  "grid": {
+    "title": "Providers",
+    "searchPlaceholder": "Search Providers",
+    "showAll": "Show All",
+    "hide": "Hide"
+  },
+  "form": {
+    "apiKey": "API Key",
+    "howToFind": "How can I find it?",
+    "enterApiKey": "Enter API Key",
+    "baseUrl": "Base URL (optional)",
+    "baseUrlPlaceholder": "https://api.openai.com/v1",
+    "baseUrlDescription": "Leave blank for OpenAI. Set to use an OpenAI-compatible endpoint.",
+    "pleaseEnterApiKey": "Please enter an API key",
+    "or": "or"
+  },
+  "oauth": {
+    "loginWith": "Login with {{provider}}",
+    "signingIn": "Signing in..."
+  },
+  "connection": {
+    "connect": "Connect",
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "disconnect": "Disconnect",
+    "connectionFailed": "Connection failed",
+    "invalidApiKey": "Invalid API key",
+    "signInFailed": "Sign-in failed"
+  },
+  "model": {
+    "label": "Model",
+    "selectModel": "Select model...",
+    "searchModels": "Search models...",
+    "noModelsFound": "No models found",
+    "pleaseSelectModel": "Please select a model"
+  }
+}

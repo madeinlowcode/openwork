@@ -1,0 +1,12 @@
+{
+  "task": {
+    "queued": "Na fila",
+    "running": "Executando",
+    "completed": "Concluido",
+    "failed": "Falhou",
+    "cancelled": "Cancelado",
+    "stopped": "Interrompido",
+    "pending": "Pendente",
+    "waiting": "Aguardando"
+  }
+}
