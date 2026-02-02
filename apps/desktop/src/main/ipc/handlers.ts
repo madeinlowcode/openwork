@@ -64,8 +64,15 @@ import {
   getProviderDebugMode,
   hasReadyProvider,
 } from '../store/providerSettings';
+import {
+  getFallbackSettings,
+  updateFallbackSettings,
+  getFallbackLogs,
+  clearFallbackLogs,
+  getFallbackStats,
+} from '../store/repositories/fallbackSettings';
 import { getOpenAiOauthStatus, loginOpenAiWithChatGpt } from '../opencode/auth';
-import type { ProviderId, ConnectedProvider, BedrockCredentials } from '@accomplish/shared';
+import type { ProviderId, ConnectedProvider, BedrockCredentials, FallbackSettings } from '@accomplish/shared';
 import { getDesktopConfig } from '../config';
 import {
   startPermissionApiServer,
@@ -2479,6 +2486,38 @@ export function registerIPCHandlers(): void {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: message };
     }
+  });
+
+  // ============================================================================
+  // Fallback Settings Handlers
+  // ============================================================================
+  // AIDEV-NOTE: Handles configuration and logging for the intelligent fallback system
+  // AIDEV-WARNING: These handlers interact with fallback_settings and fallback_logs tables
+
+  // Fallback: Get current settings
+  handle('fallback:get-settings', async () => {
+    return getFallbackSettings();
+  });
+
+  // Fallback: Update settings (partial update supported)
+  handle('fallback:set-settings', async (_event: IpcMainInvokeEvent, settings: Partial<FallbackSettings>) => {
+    updateFallbackSettings(settings);
+    return getFallbackSettings();
+  });
+
+  // Fallback: Get event logs with optional limit
+  handle('fallback:get-logs', async (_event: IpcMainInvokeEvent, limit?: number) => {
+    return getFallbackLogs(limit);
+  });
+
+  // Fallback: Clear all event logs
+  handle('fallback:clear-logs', async () => {
+    clearFallbackLogs();
+  });
+
+  // Fallback: Get usage statistics
+  handle('fallback:get-stats', async () => {
+    return getFallbackStats();
   });
 }
 

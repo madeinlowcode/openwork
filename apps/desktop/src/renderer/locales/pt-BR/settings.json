@@ -5,6 +5,7 @@
   "tabs": {
     "providers": "Provedores",
     "voice": "Entrada de Voz",
+    "fallback": "Fallback",
     "general": "Geral"
   },
   "warning": {

@@ -5,3 +5,4 @@ export * from './provider';
 export * from './providerSettings';
 export * from './task';
 export * from './todo';
+export * from './fallbackSettings';

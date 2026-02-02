@@ -21,6 +21,8 @@ import type {
   ConnectedProvider,
   TodoItem,
   ToolSupportStatus,
+  FallbackSettings,
+  FallbackLogEntry,
 } from '@accomplish/shared';
 
 // Define the API interface
@@ -189,6 +191,32 @@ interface JurisiarAPI {
   // Logging
   logEvent(payload: { level?: string; message: string; context?: Record<string, unknown> }): Promise<unknown>;
   exportLogs(): Promise<{ success: boolean; path?: string; error?: string; reason?: string }>;
+
+  // ============================================================================
+  // Fallback Settings API
+  // ============================================================================
+  // AIDEV-NOTE: Provides access to fallback system configuration and logging
+  // AIDEV-WARNING: This API interacts with SQLite via IPC
+
+  /** Fallback system API */
+  fallback?: {
+    /** Get current fallback settings */
+    getSettings(): Promise<FallbackSettings>;
+    /** Update fallback settings (partial update supported) */
+    setSettings(settings: Partial<FallbackSettings>): Promise<FallbackSettings>;
+    /** Get fallback event logs with optional limit */
+    getLogs(limit?: number): Promise<FallbackLogEntry[]>;
+    /** Clear all fallback event logs */
+    clearLogs(): Promise<void>;
+    /** Get fallback usage statistics */
+    getStats(): Promise<{
+      totalEvents: number;
+      successfulEvents: number;
+      failedEvents: number;
+      successRate: number;
+      avgDurationMs: number | null;
+    }>;
+  };
 }
 
 interface JurisiarShell {
@@ -263,3 +291,82 @@ export function useJurisiar(): JurisiarAPI {
   }
   return api;
 }
+
+// ============================================================================
+// Fallback Settings API
+// ============================================================================
+/**
+ * @description Typed wrapper for fallback system API
+ *
+ * @example
+ * import { fallback } from '@/lib/jurisiar';
+ * const settings = await fallback.getSettings();
+ * await fallback.setSettings({ enabled: true });
+ *
+ * AIDEV-NOTE: This wrapper provides type-safe access to fallback IPC handlers
+ * AIDEV-WARNING: Throws if called outside Electron context
+ */
+export const fallback = {
+  /**
+   * Get current fallback settings
+   * @returns {Promise<FallbackSettings>} Current fallback configuration
+   */
+  getSettings: (): Promise<FallbackSettings> => {
+    if (!window.jurisiar?.fallback) {
+      throw new Error('Fallback API not available');
+    }
+    return window.jurisiar.fallback.getSettings();
+  },
+
+  /**
+   * Update fallback settings (partial update supported)
+   * @param {Partial<FallbackSettings>} settings - Settings to update
+   * @returns {Promise<FallbackSettings>} Updated fallback configuration
+   */
+  setSettings: (settings: Partial<FallbackSettings>): Promise<FallbackSettings> => {
+    if (!window.jurisiar?.fallback) {
+      throw new Error('Fallback API not available');
+    }
+    return window.jurisiar.fallback.setSettings(settings);
+  },
+
+  /**
+   * Get fallback event logs with optional limit
+   * @param {number} [limit] - Maximum number of entries to return (default: 100)
+   * @returns {Promise<FallbackLogEntry[]>} Array of log entries, newest first
+   */
+  getLogs: (limit?: number): Promise<FallbackLogEntry[]> => {
+    if (!window.jurisiar?.fallback) {
+      throw new Error('Fallback API not available');
+    }
+    return window.jurisiar.fallback.getLogs(limit);
+  },
+
+  /**
+   * Clear all fallback event logs
+   * @returns {Promise<void>}
+   */
+  clearLogs: (): Promise<void> => {
+    if (!window.jurisiar?.fallback) {
+      throw new Error('Fallback API not available');
+    }
+    return window.jurisiar.fallback.clearLogs();
+  },
+
+  /**
+   * Get fallback usage statistics
+   * @returns {Promise<object>} Statistics about fallback usage
+   */
+  getStats: (): Promise<{
+    totalEvents: number;
+    successfulEvents: number;
+    failedEvents: number;
+    successRate: number;
+    avgDurationMs: number | null;
+  }> => {
+    if (!window.jurisiar?.fallback) {
+      throw new Error('Fallback API not available');
+    }
+    return window.jurisiar.fallback.getStats();
+  },
+};

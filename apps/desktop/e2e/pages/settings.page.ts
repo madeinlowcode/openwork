@@ -126,6 +126,28 @@ export class SettingsPage {
     return this.page.getByTestId('settings-debug-toggle');
   }
 
+  // ===== Fallback Settings =====
+
+  get fallbackTab() {
+    return this.page.getByRole('button', { name: 'Fallback' });
+  }
+
+  get fallbackEnabledToggle() {
+    return this.page.getByTestId('fallback-enabled-toggle');
+  }
+
+  get fallbackSummarizationToggle() {
+    return this.page.getByTestId('fallback-summarization-toggle');
+  }
+
+  get fallbackModelSelect() {
+    return this.page.locator('select').first();
+  }
+
+  get fallbackCard() {
+    return this.page.locator('[class*="Card"]').filter({ hasText: 'Fallback' }).first();
+  }
+
   // ===== Dialog =====
 
   get settingsDialog() {
@@ -243,5 +265,30 @@ export class SettingsPage {
 
   async enterLiteLLMApiKey(key: string) {
     await this.litellmApiKeyInput.fill(key);
+  }
+
+  // Fallback specific actions
+  async navigateToFallbackTab() {
+    await this.fallbackTab.click();
+    // Wait for tab content to appear
+    await this.page.waitForTimeout(300);
+  }
+
+  async toggleFallbackEnabled() {
+    await this.fallbackEnabledToggle.click();
+    // Wait for state change
+    await this.page.waitForTimeout(100);
+  }
+
+  async toggleFallbackSummarization() {
+    await this.fallbackSummarizationToggle.click();
+    // Wait for state change
+    await this.page.waitForTimeout(100);
+  }
+
+  async selectFallbackModel(modelId: string) {
+    await this.fallbackModelSelect.selectOption({ value: modelId }, { force: true });
+    // Wait for save
+    await this.page.waitForTimeout(200);
   }
 }

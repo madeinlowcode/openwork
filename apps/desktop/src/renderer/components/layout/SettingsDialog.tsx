@@ -39,6 +39,7 @@ import { ProviderGrid } from '@/components/settings/ProviderGrid';
 import { ProviderSettingsPanel } from '@/components/settings/ProviderSettingsPanel';
 import { SpeechSettingsForm } from '@/components/settings/SpeechSettingsForm';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
+import { FallbackSettings } from '@/components/settings/FallbackSettings';
 
 // First 4 providers shown in collapsed view (matches PROVIDER_ORDER in ProviderGrid)
 const FIRST_FOUR_PROVIDERS: ProviderId[] = ['openai', 'anthropic', 'google', 'bedrock'];
@@ -62,7 +63,7 @@ export default function SettingsDialog({
   initialTab = 'providers',
 }: SettingsDialogProps) {
   // AIDEV-NOTE: Tipos de tabs disponiveis no dialog
-  type TabType = 'providers' | 'voice' | 'general';
+  type TabType = 'providers' | 'voice' | 'fallback' | 'general';
   // AIDEV-NOTE: Usa namespace 'settings' para traducoes do dialog
   const { t } = useTranslation('settings');
 
@@ -336,6 +337,16 @@ export default function SettingsDialog({
               {t('tabs.voice')}
             </button>
             <button
+              onClick={() => setActiveTab('fallback')}
+              className={`pb-3 px-1 font-medium text-sm transition-colors ${
+                activeTab === 'fallback'
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t('tabs.fallback')}
+            </button>
+            <button
               onClick={() => setActiveTab('general')}
               className={`pb-3 px-1 font-medium text-sm transition-colors ${
                 activeTab === 'general'
@@ -497,6 +508,13 @@ export default function SettingsDialog({
           {activeTab === 'voice' && (
             <div className="space-y-6">
               <SpeechSettingsForm onSave={() => {}} onChange={() => {}} />
+            </div>
+          )}
+
+          {/* Fallback Tab */}
+          {activeTab === 'fallback' && (
+            <div className="space-y-6">
+              <FallbackSettings onSave={() => {}} onChange={() => {}} />
             </div>
           )}
 

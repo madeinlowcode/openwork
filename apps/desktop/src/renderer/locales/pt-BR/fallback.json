@@ -1,0 +1,45 @@
+{
+  "title": "Fallback Automatico",
+  "description": "Configure o comportamento de fallback quando o modelo principal falhar por rate limit.",
+  "enabled": {
+    "label": "Ativar Fallback Automatico",
+    "description": "Quando o modelo principal falhar por rate limit, automaticamente tenta outro modelo."
+  },
+  "fallbackModel": {
+    "label": "Modelo de Fallback",
+    "placeholder": "Selecionar modelo",
+    "description": "Modelo a ser usado quando o principal falhar."
+  },
+  "advanced": {
+    "title": "Configuracoes Avancadas",
+    "maxRetries": {
+      "label": "Tentativas antes do fallback",
+      "description": "Numero de tentativas antes de acionar o fallback."
+    },
+    "retryDelay": {
+      "label": "Delay entre tentativas (ms)",
+      "description": "Tempo de espera entre tentativas em milissegundos."
+    }
+  },
+  "summarization": {
+    "label": "Usar IA para Sumarizacao de Contexto",
+    "description": "Usa um modelo mais barato para resumir o contexto antes do fallback.",
+    "model": {
+      "label": "Modelo de Sumarizacao",
+      "placeholder": "Selecionar modelo"
+    },
+    "costWarning": "Custo estimado: ~R$0,02 por fallback"
+  },
+  "provider": {
+    "label": "Provedor",
+    "openrouter": "OpenRouter"
+  },
+  "status": {
+    "notConfigured": "Fallback nao configurado",
+    "configured": "Fallback configurado e pronto"
+  },
+  "error": {
+    "loadFailed": "Falha ao carregar configuracoes de fallback",
+    "saveFailed": "Falha ao salvar configuracoes de fallback"
+  }
+}

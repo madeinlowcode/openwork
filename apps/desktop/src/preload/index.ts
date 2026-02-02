@@ -297,6 +297,77 @@ const jurisiarAPI = {
     success: false;
     error: { code: string; message: string };
   }> => ipcRenderer.invoke('speech:transcribe', audioData, mimeType),
+
+  // ============================================================================
+  // Fallback Settings API
+  // ============================================================================
+  // AIDEV-NOTE: Exposes fallback system configuration and logging to renderer
+  // AIDEV-WARNING: Settings are stored in SQLite via fallback_settings table
+
+  fallback: {
+    /** Get current fallback settings */
+    getSettings: (): Promise<{
+      enabled: boolean;
+      fallbackModelId: string | null;
+      fallbackProvider: string;
+      maxRetries: number;
+      retryDelayMs: number;
+      useLLMSummarization: boolean;
+      summarizationModelId: string | null;
+      summarizationProvider: string;
+    }> => ipcRenderer.invoke('fallback:get-settings'),
+
+    /** Update fallback settings (partial update supported) */
+    setSettings: (settings: Partial<{
+      enabled: boolean;
+      fallbackModelId: string | null;
+      fallbackProvider: string;
+      maxRetries: number;
+      retryDelayMs: number;
+      useLLMSummarization: boolean;
+      summarizationModelId: string | null;
+      summarizationProvider: string;
+    }>): Promise<{
+      enabled: boolean;
+      fallbackModelId: string | null;
+      fallbackProvider: string;
+      maxRetries: number;
+      retryDelayMs: number;
+      useLLMSummarization: boolean;
+      summarizationModelId: string | null;
+      summarizationProvider: string;
+    }> => ipcRenderer.invoke('fallback:set-settings', settings),
+
+    /** Get fallback event logs with optional limit */
+    getLogs: (limit?: number): Promise<Array<{
+      id?: number;
+      taskId: string;
+      sessionId?: string;
+      originalModel?: string;
+      originalProvider?: string;
+      fallbackModel?: string;
+      fallbackProvider?: string;
+      errorType?: string;
+      errorMessage?: string;
+      contextMethod?: 'template' | 'llm';
+      contextTokens?: number;
+      success: boolean;
+      durationMs?: number;
+      createdAt?: string;
+    }>> => ipcRenderer.invoke('fallback:get-logs', limit),
+
+    /** Clear all fallback event logs */
+    clearLogs: (): Promise<void> => ipcRenderer.invoke('fallback:clear-logs'),
+
+    /** Get fallback usage statistics */
+    getStats: (): Promise<{
+      totalEvents: number;
+      successfulEvents: number;
+      failedEvents: number;
+      successRate: number;
+      avgDurationMs: number | null;
+    }> => ipcRenderer.invoke('fallback:get-stats'),
+  },
 };
 
 // Expose the API to the renderer

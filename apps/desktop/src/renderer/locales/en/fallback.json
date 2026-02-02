@@ -1,0 +1,45 @@
+{
+  "title": "Automatic Fallback",
+  "description": "Configure fallback behavior when the main model fails due to rate limit.",
+  "enabled": {
+    "label": "Enable Automatic Fallback",
+    "description": "When the main model fails due to rate limit, automatically tries another model."
+  },
+  "fallbackModel": {
+    "label": "Fallback Model",
+    "placeholder": "Select model",
+    "description": "Model to use when the main one fails."
+  },
+  "advanced": {
+    "title": "Advanced Settings",
+    "maxRetries": {
+      "label": "Retries before fallback",
+      "description": "Number of retries before triggering fallback."
+    },
+    "retryDelay": {
+      "label": "Delay between retries (ms)",
+      "description": "Wait time between retries in milliseconds."
+    }
+  },
+  "summarization": {
+    "label": "Use AI for Context Summarization",
+    "description": "Uses a cheaper model to summarize context before fallback.",
+    "model": {
+      "label": "Summarization Model",
+      "placeholder": "Select model"
+    },
+    "costWarning": "Estimated cost: ~$0.01 per fallback"
+  },
+  "provider": {
+    "label": "Provider",
+    "openrouter": "OpenRouter"
+  },
+  "status": {
+    "notConfigured": "Fallback not configured",
+    "configured": "Fallback configured and ready"
+  },
+  "error": {
+    "loadFailed": "Failed to load fallback settings",
+    "saveFailed": "Failed to save fallback settings"
+  }
+}
