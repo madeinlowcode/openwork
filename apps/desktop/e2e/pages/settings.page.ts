@@ -145,7 +145,8 @@ export class SettingsPage {
   }
 
   get fallbackCard() {
-    return this.page.locator('[class*="Card"]').filter({ hasText: 'Fallback' }).first();
+    // Card component uses data-slot="card" attribute
+    return this.page.locator('[data-slot="card"]').filter({ hasText: /Fallback|fallback/i }).first();
   }
 
   // ===== Dialog =====

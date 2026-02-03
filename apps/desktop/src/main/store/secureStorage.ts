@@ -270,3 +270,93 @@ export function clearSecureStorage(): void {
   store.clear();
   _derivedKey = null; // Clear cached key
 }
+
+// ============================================================================
+// Auth Token Storage
+// ============================================================================
+// AIDEV-NOTE: Metodos para armazenar/recuperar tokens JWT de autenticacao Supabase
+// AIDEV-WARNING: Tokens sao armazenados de forma segura via AES-256-GCM
+// AIDEV-SECURITY: Tokens JWT podem conter informacoes sensiveis - nunca logar
+
+/**
+ * Interface para token de autenticacao armazenado
+ */
+export interface StoredAuthToken {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt?: number;
+}
+
+const AUTH_TOKEN_KEY = 'authToken:supabase';
+
+/**
+ * Armazena token de autenticacao de forma segura
+ *
+ * @param token - Token de autenticacao a ser armazenado
+ *
+ * AIDEV-WARNING: O token e serializado para JSON antes de criptografar
+ * AIDEV-SECURITY: Nunca logar o conteudo do token
+ */
+export function storeAuthToken(token: StoredAuthToken): void {
+  const store = getSecureStore();
+  const serialized = JSON.stringify(token);
+  const encrypted = encryptValue(serialized);
+  const values = store.get('values');
+  values[AUTH_TOKEN_KEY] = encrypted;
+  store.set('values', values);
+}
+
+/**
+ * Recupera token de autenticacao armazenado
+ *
+ * @returns Token armazenado ou null se nao existir
+ *
+ * AIDEV-NOTE: Retorna null se token nao existir ou for invalido
+ */
+export function getAuthToken(): StoredAuthToken | null {
+  const store = getSecureStore();
+  const values = store.get('values');
+  if (!values) {
+    return null;
+  }
+  const encrypted = values[AUTH_TOKEN_KEY];
+  if (!encrypted) {
+    return null;
+  }
+  const decrypted = decryptValue(encrypted);
+  if (!decrypted) {
+    return null;
+  }
+  try {
+    return JSON.parse(decrypted) as StoredAuthToken;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Remove token de autenticacao armazenado (logout)
+ *
+ * @returns true se token foi removido, false se nao existia
+ */
+export function clearAuthToken(): boolean {
+  const store = getSecureStore();
+  const values = store.get('values');
+  if (!(AUTH_TOKEN_KEY in values)) {
+    return false;
+  }
+  delete values[AUTH_TOKEN_KEY];
+  store.set('values', values);
+  return true;
+}
+
+/**
+ * Verifica se existe token de autenticacao armazenado
+ *
+ * @returns true se existe token armazenado
+ */
+export function hasAuthToken(): boolean {
+  const store = getSecureStore();
+  const values = store.get('values');
+  return AUTH_TOKEN_KEY in values;
+}

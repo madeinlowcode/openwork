@@ -1,0 +1,79 @@
+# ============================================================================
+# Supabase Local Development Configuration
+# ============================================================================
+#
+# This file configures the local Supabase instance for development.
+# For production, use the Supabase Dashboard to configure settings.
+#
+# Documentation: https://supabase.com/docs/guides/cli/config
+# ============================================================================
+
+[api]
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API endpoints.
+schemas = ["public", "graphql_public"]
+# Extra schemas to add to the search_path of every request. public is always included.
+extra_search_path = ["public", "extensions"]
+# The maximum number of rows returns from a view, table, or stored procedure.
+max_rows = 1000
+
+[db]
+# Port to use for the local database URL.
+port = 54322
+# The database major version to use.
+major_version = 15
+
+[studio]
+# Port to use for Supabase Studio.
+port = 54323
+
+[inbucket]
+# Port to use for the email testing server.
+port = 54324
+
+[storage]
+# The maximum file size allowed (e.g. "5MB").
+file_size_limit = "50MiB"
+
+[auth]
+# The base URL of your website.
+site_url = "http://localhost:3000"
+# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+additional_redirect_urls = ["https://localhost:3000"]
+# How long tokens are valid for, in seconds.
+jwt_expiry = 3600
+# Allow/disallow new user signups.
+enable_signup = true
+
+[auth.email]
+# Allow/disallow new user signups via email.
+enable_signup = true
+# If enabled, a user will be required to confirm any email change.
+double_confirm_changes = true
+# If enabled, users need to confirm their email address before signing in.
+enable_confirmations = false
+
+[functions]
+# ============================================================================
+# Edge Functions Configuration
+# ============================================================================
+
+[functions.llm-proxy]
+# Verify JWT tokens before executing.
+verify_jwt = true
+
+[functions.llm-summarize]
+# Verify JWT tokens before executing.
+verify_jwt = true
+
+# ============================================================================
+# Local Secrets (for development only)
+# ============================================================================
+# For local development, create a file at supabase/.env.local with:
+#
+# OPENROUTER_API_KEY=sk-or-v1-your-key
+# SUMMARIZATION_MODEL=google/gemini-flash-1.5-8b
+#
+# Then run: supabase functions serve --env-file supabase/.env.local
+# ============================================================================

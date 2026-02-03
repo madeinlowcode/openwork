@@ -14,7 +14,7 @@ import { getAllApiKeys, getBedrockCredentials } from '../store/secureStorage';
 // TODO: Remove getAzureFoundryConfig import in v0.4.0 when legacy support is dropped
 import { getSelectedModel, getAzureFoundryConfig, getOpenAiBaseUrl } from '../store/appSettings';
 import { getActiveProviderModel, getConnectedProvider } from '../store/providerSettings';
-import type { AzureFoundryCredentials } from '@accomplish/shared';
+import type { AzureFoundryCredentials, FallbackSettings } from '@accomplish/shared';
 import { generateOpenCodeConfig, ACCOMPLISH_AGENT_NAME, syncApiKeysToOpenCodeAuth } from './config-generator';
 import { getAzureEntraToken } from './azure-token-manager';
 import { getExtendedNodePath } from '../utils/system-path';
@@ -31,6 +31,20 @@ import type {
   PermissionRequest,
   TodoItem,
 } from '@accomplish/shared';
+
+// ============================================================================
+// Fallback System Integration
+// ============================================================================
+// AIDEV-NOTE: Imports for intelligent fallback system
+// AIDEV-WARNING: FallbackEngine should be created per-task, not globally
+import {
+  FallbackEngine,
+  createFallbackEngine,
+  isRateLimitError,
+  type FallbackHandleResult,
+  type FallbackEngineEvents,
+} from './fallback';
+import { getFallbackSettings } from '../store/repositories/fallbackSettings';
 
 /**
  * Error thrown when OpenCode CLI is not available
@@ -58,6 +72,13 @@ export async function getOpenCodeCliVersion(): Promise<string | null> {
   return getBundledOpenCodeVersion();
 }
 
+/**
+ * @interface OpenCodeAdapterEvents
+ * @description Events emitted by the OpenCodeAdapter
+ *
+ * AIDEV-NOTE: Includes fallback system events for rate limit handling
+ * AIDEV-WARNING: Changes to event signatures may break IPC handlers
+ */
 export interface OpenCodeAdapterEvents {
   message: [OpenCodeMessage];
   'tool-use': [string, unknown];
@@ -69,8 +90,32 @@ export interface OpenCodeAdapterEvents {
   debug: [{ type: string; message: string; data?: unknown }];
   'todo:update': [TodoItem[]];
   'auth-error': [{ providerId: string; message: string }];
+  // Fallback system events
+  'fallback:started': [FallbackEngineEvents['fallback:start']];
+  'fallback:completed': [FallbackEngineEvents['fallback:complete']];
+  'fallback:failed': [{ error: string; phase: string }];
 }
 
+/**
+ * @class OpenCodeAdapter
+ * @description Adapter for OpenCode CLI execution with integrated fallback system
+ *
+ * @context Main process - manages task execution lifecycle
+ *
+ * @dependencies
+ * - node-pty (PTY for CLI spawning)
+ * - ./fallback (FallbackEngine for rate limit handling)
+ * - ./log-watcher (error detection)
+ * - ./stream-parser (output parsing)
+ *
+ * @stateManagement
+ * - Tracks task execution state (messages, completion, interruption)
+ * - Manages FallbackEngine instance per task
+ * - Handles model switching on rate limit errors
+ *
+ * AIDEV-WARNING: Critical component - changes affect task reliability
+ * AIDEV-NOTE: Each task should have its own adapter instance
+ */
 export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   private ptyProcess: pty.IPty | null = null;
   private streamParser: StreamParser;
@@ -85,10 +130,25 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   private lastWorkingDirectory: string | undefined;
   /** Current model ID for display name */
   private currentModelId: string | null = null;
+  /** Current provider for fallback tracking */
+  private currentProvider: string | null = null;
   /** Timer for transitioning from 'connecting' to 'waiting' stage */
   private waitingTransitionTimer: ReturnType<typeof setTimeout> | null = null;
   /** Whether the first tool has been received (to stop showing startup stages) */
   private hasReceivedFirstTool: boolean = false;
+
+  // ============================================================================
+  // Fallback System Properties
+  // ============================================================================
+  // AIDEV-NOTE: FallbackEngine manages automatic model switching on rate limit
+  // AIDEV-WARNING: Engine is created per-task and should be disposed with adapter
+
+  /** FallbackEngine instance for handling rate limit errors */
+  private fallbackEngine: FallbackEngine | null = null;
+  /** Original prompt for task continuation */
+  private currentPrompt: string | null = null;
+  /** Whether we're currently in a fallback execution */
+  private isFallbackExecution: boolean = false;
 
   /**
    * Create a new OpenCodeAdapter instance
@@ -129,11 +189,14 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
    * Set up the log watcher to detect errors from OpenCode CLI logs.
    * The CLI doesn't always output errors as JSON to stdout (e.g., throttling errors),
    * so we monitor the log files directly.
+   *
+   * AIDEV-NOTE: Integrates with FallbackEngine for rate limit handling
+   * AIDEV-WARNING: Rate limit detection triggers automatic model switching
    */
   private setupLogWatcher(): void {
     this.logWatcher = createLogWatcher();
 
-    this.logWatcher.on('error', (error: OpenCodeLogError) => {
+    this.logWatcher.on('error', async (error: OpenCodeLogError) => {
       // Only handle errors if we have an active task that hasn't completed
       if (!this.hasCompleted && this.ptyProcess) {
         console.log('[OpenCode Adapter] Log watcher detected error:', error.errorName);
@@ -152,6 +215,21 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
             message: error.message,
           },
         });
+
+        // ================================================================
+        // FALLBACK SYSTEM: Check for rate limit errors
+        // ================================================================
+        // AIDEV-NOTE: Attempt fallback before marking task as failed
+        // AIDEV-WARNING: Fallback may restart task with different model
+        if (this.fallbackEngine && isRateLimitError(errorMessage)) {
+          console.log('[OpenCode Adapter] Rate limit detected, attempting fallback...');
+
+          const fallbackHandled = await this.handleRateLimitWithFallback(errorMessage);
+          if (fallbackHandled) {
+            // Fallback initiated, don't mark as error
+            return;
+          }
+        }
 
         // Emit auth-error event if this is an authentication error
         if (error.isAuthError && error.providerID) {
@@ -182,6 +260,263 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     });
   }
 
+  // ============================================================================
+  // Fallback System Methods
+  // ============================================================================
+
+  /**
+   * Initialize the FallbackEngine for the current task
+   *
+   * @description Creates and configures the fallback engine based on user settings
+   *
+   * AIDEV-NOTE: Called at task start, engine is disposed with adapter
+   * AIDEV-WARNING: Only creates engine if fallback is enabled in settings
+   */
+  private async initFallbackEngine(): Promise<void> {
+    const settings = getFallbackSettings();
+
+    if (!settings.enabled || !settings.fallbackModelId) {
+      console.log('[OpenCode Adapter] Fallback system disabled or not configured');
+      this.fallbackEngine = null;
+      return;
+    }
+
+    console.log('[OpenCode Adapter] Initializing FallbackEngine with settings:', {
+      enabled: settings.enabled,
+      fallbackModel: settings.fallbackModelId,
+      maxRetries: settings.maxRetries,
+    });
+
+    this.fallbackEngine = createFallbackEngine({
+      settings,
+      taskId: this.currentTaskId!,
+      sessionId: this.currentSessionId ?? undefined,
+      originalModel: this.currentModelId || 'unknown',
+      originalProvider: this.currentProvider || 'unknown',
+    });
+
+    // Wire up engine events to adapter events
+    this.fallbackEngine.on('fallback:start', (data) => {
+      console.log('[OpenCode Adapter] Fallback started:', data);
+      this.emit('fallback:started', data);
+    });
+
+    this.fallbackEngine.on('fallback:complete', (data) => {
+      console.log('[OpenCode Adapter] Fallback completed:', data);
+      this.emit('fallback:completed', data);
+    });
+
+    this.fallbackEngine.on('fallback:error', (data) => {
+      console.log('[OpenCode Adapter] Fallback error:', data);
+      this.emit('fallback:failed', data);
+    });
+  }
+
+  /**
+   * Handle a rate limit error by attempting fallback to alternate model
+   *
+   * @param errorMessage - The error message that was detected
+   * @returns True if fallback was initiated, false if not possible
+   *
+   * AIDEV-NOTE: Generates context and restarts task with fallback model
+   * AIDEV-WARNING: May take time due to context generation
+   */
+  private async handleRateLimitWithFallback(errorMessage: string): Promise<boolean> {
+    if (!this.fallbackEngine) {
+      console.log('[OpenCode Adapter] No fallback engine available');
+      return false;
+    }
+
+    try {
+      // Prepare error object for fallback engine
+      const error = { message: errorMessage, code: 'RATE_LIMIT' };
+
+      // Handle the error with fallback engine
+      const result: FallbackHandleResult = await this.fallbackEngine.handleError(
+        errorMessage,
+        this.messages,
+        this.currentPrompt || undefined
+      );
+
+      if (!result.shouldFallback) {
+        console.log('[OpenCode Adapter] Fallback not possible:', {
+          errorType: result.errorType,
+        });
+        return false;
+      }
+
+      console.log('[OpenCode Adapter] Fallback decision:', {
+        shouldFallback: result.shouldFallback,
+        fallbackModel: result.fallbackModel,
+        contextMethod: result.contextMethod,
+      });
+
+      // Initiate fallback restart
+      await this.restartWithFallback(
+        {
+          id: result.fallbackModel!,
+          provider: result.fallbackProvider!,
+        },
+        result.context!
+      );
+
+      return true;
+    } catch (error) {
+      console.error('[OpenCode Adapter] Fallback handling failed:', error);
+      this.emit('fallback:failed', {
+        error: error instanceof Error ? error.message : String(error),
+        phase: 'execution',
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Restart the task with a fallback model and continuation context
+   *
+   * @param fallbackModel - The model to use for continuation
+   * @param context - Generated context describing work done so far
+   *
+   * AIDEV-NOTE: Kills current process and starts new one with fallback model
+   * AIDEV-WARNING: Task state is preserved but execution restarts
+   */
+  private async restartWithFallback(
+    fallbackModel: { id: string; provider: string },
+    context: string
+  ): Promise<void> {
+    console.log('[OpenCode Adapter] Restarting with fallback model:', fallbackModel);
+
+    // Kill current PTY process
+    if (this.ptyProcess) {
+      try {
+        this.ptyProcess.kill();
+      } catch (err) {
+        console.warn('[OpenCode Adapter] Error killing PTY for fallback:', err);
+      }
+      this.ptyProcess = null;
+    }
+
+    // Mark as fallback execution
+    this.isFallbackExecution = true;
+
+    // Create continuation prompt with context
+    const continuationPrompt = `
+[CONTINUACAO DE TAREFA - FALLBACK AUTOMATICO]
+
+A tarefa anterior foi interrompida por limite de requisicoes do modelo.
+Contexto do trabalho ja realizado:
+
+${context}
+
+Por favor, continue a tarefa de onde parou.
+
+Tarefa original: ${this.currentPrompt || 'N/A'}
+`;
+
+    // Reset adapter state for new execution
+    this.streamParser.reset();
+    this.hasCompleted = false;
+    this.completionEnforcer.reset();
+    this.hasReceivedFirstTool = false;
+
+    // Start new task with fallback model
+    // Note: We use the existing session ID to preserve context
+    const config: TaskConfig = {
+      prompt: continuationPrompt,
+      sessionId: this.currentSessionId || undefined,
+      workingDirectory: this.lastWorkingDirectory,
+      taskId: this.currentTaskId || undefined,
+    };
+
+    // Emit progress to notify UI of fallback
+    this.emit('progress', {
+      stage: 'fallback',
+      message: `Switching to ${getModelDisplayName(fallbackModel.id)}...`,
+      modelName: getModelDisplayName(fallbackModel.id),
+    });
+
+    // Build CLI args for the fallback model
+    // We need to override the model selection temporarily
+    const originalModelId = this.currentModelId;
+    const originalProvider = this.currentProvider;
+
+    try {
+      // Update current model to fallback
+      this.currentModelId = fallbackModel.id;
+      this.currentProvider = fallbackModel.provider;
+
+      // Build and execute the CLI
+      const cliArgs = await this.buildCliArgs(config);
+      const { command, args: baseArgs } = getOpenCodeCliPath();
+      const allArgs = [...baseArgs, ...cliArgs];
+
+      // Override model in args for fallback
+      const modelArgIndex = allArgs.indexOf('--model');
+      if (modelArgIndex !== -1 && modelArgIndex + 1 < allArgs.length) {
+        // Format: provider/model for openrouter, or just model ID
+        if (fallbackModel.provider === 'openrouter') {
+          allArgs[modelArgIndex + 1] = `openrouter/${fallbackModel.id}`;
+        } else {
+          allArgs[modelArgIndex + 1] = `${fallbackModel.provider}/${fallbackModel.id}`;
+        }
+      } else {
+        // Add model argument
+        if (fallbackModel.provider === 'openrouter') {
+          allArgs.push('--model', `openrouter/${fallbackModel.id}`);
+        } else {
+          allArgs.push('--model', `${fallbackModel.provider}/${fallbackModel.id}`);
+        }
+      }
+
+      console.log('[OpenCode Adapter] Fallback CLI command:', command, allArgs.join(' '));
+
+      // Build environment and spawn new PTY
+      const env = await this.buildEnvironment();
+      const safeCwd = config.workingDirectory || app.getPath('temp');
+      const fullCommand = this.buildShellCommand(command, allArgs);
+      const shellCmd = this.getPlatformShell();
+      const shellArgs = this.getShellArgs(fullCommand);
+
+      this.ptyProcess = pty.spawn(shellCmd, shellArgs, {
+        name: 'xterm-256color',
+        cols: 200,
+        rows: 30,
+        cwd: safeCwd,
+        env: env as { [key: string]: string },
+      });
+
+      // Setup PTY event handlers
+      this.ptyProcess.onData((data: string) => {
+        const cleanData = data
+          .replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, '')
+          .replace(/\x1B\][^\x07]*\x07/g, '')
+          .replace(/\x1B\][^\x1B]*\x1B\\/g, '');
+        if (cleanData.trim()) {
+          const truncated = cleanData.substring(0, 500) + (cleanData.length > 500 ? '...' : '');
+          console.log('[OpenCode CLI stdout (fallback)]:', truncated);
+          this.emit('debug', { type: 'stdout', message: cleanData });
+          this.streamParser.feed(cleanData);
+        }
+      });
+
+      this.ptyProcess.onExit(({ exitCode }) => {
+        // Log fallback result
+        if (this.fallbackEngine) {
+          const success = exitCode === 0;
+          this.fallbackEngine.logResult(success);
+        }
+        this.handleProcessExit(exitCode);
+      });
+
+      console.log('[OpenCode Adapter] Fallback PTY spawned with PID:', this.ptyProcess.pid);
+    } catch (error) {
+      // Restore original model on failure
+      this.currentModelId = originalModelId;
+      this.currentProvider = originalProvider;
+      throw error;
+    }
+  }
+
   /**
    * Start a new task with OpenCode CLI
    */
@@ -207,6 +542,10 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     this.completionEnforcer.reset();
     this.lastWorkingDirectory = config.workingDirectory;
     this.hasReceivedFirstTool = false;
+    // Store original prompt for fallback context
+    this.currentPrompt = config.prompt;
+    // Reset fallback state
+    this.isFallbackExecution = false;
     // Clear any existing waiting transition timer
     if (this.waitingTransitionTimer) {
       clearTimeout(this.waitingTransitionTimer);
@@ -216,6 +555,16 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     // Start the log watcher to detect errors that aren't output as JSON
     if (this.logWatcher) {
       await this.logWatcher.start();
+    }
+
+    // ================================================================
+    // FALLBACK SYSTEM: Initialize FallbackEngine for this task
+    // ================================================================
+    // AIDEV-NOTE: Engine handles rate limit errors with automatic model switching
+    // AIDEV-WARNING: Dispose old engine before creating new one
+    if (this.fallbackEngine) {
+      this.fallbackEngine.dispose();
+      this.fallbackEngine = null;
     }
 
     // Run Node.js diagnostics to help troubleshoot MCP server issues
@@ -229,6 +578,14 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     let azureFoundryToken: string | undefined;
     const activeModel = getActiveProviderModel();
     const selectedModel = activeModel || getSelectedModel();
+
+    // Store current model and provider for fallback tracking
+    this.currentModelId = selectedModel?.model || null;
+    this.currentProvider = selectedModel?.provider || null;
+
+    // Initialize FallbackEngine after we know the current model
+    await this.initFallbackEngine();
+
     // TODO: Remove legacy azureFoundryConfig check in v0.4.0
     const azureFoundryConfig = getAzureFoundryConfig();
 
@@ -488,12 +845,24 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     this.messages = [];
     this.hasCompleted = true;
     this.currentModelId = null;
+    this.currentProvider = null;
     this.hasReceivedFirstTool = false;
+    this.currentPrompt = null;
+    this.isFallbackExecution = false;
 
     // Clear waiting transition timer
     if (this.waitingTransitionTimer) {
       clearTimeout(this.waitingTransitionTimer);
       this.waitingTransitionTimer = null;
+    }
+
+    // ================================================================
+    // FALLBACK SYSTEM: Dispose FallbackEngine
+    // ================================================================
+    // AIDEV-NOTE: Clean up fallback engine resources
+    if (this.fallbackEngine) {
+      this.fallbackEngine.dispose();
+      this.fallbackEngine = null;
     }
 
     // Reset stream parser
@@ -873,6 +1242,22 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
             clearTimeout(this.waitingTransitionTimer);
             this.waitingTransitionTimer = null;
           }
+        }
+
+        // ================================================================
+        // FALLBACK SYSTEM: Store tool calls for context generation
+        // ================================================================
+        // AIDEV-NOTE: Tool calls are stored as messages for fallback context
+        {
+          const toolMessage: TaskMessage = {
+            id: this.generateMessageId(),
+            type: 'tool',
+            content: JSON.stringify({ tool_name: toolName, tool_input: toolInput }),
+            toolName: toolName,
+            toolInput: toolInput,
+            timestamp: new Date().toISOString(),
+          };
+          this.messages.push(toolMessage);
         }
 
         // Notify completion enforcer that tools were used in this invocation

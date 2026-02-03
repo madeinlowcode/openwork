@@ -276,6 +276,63 @@ const jurisiarAPI = {
     return () => ipcRenderer.removeListener('auth:error', listener);
   },
 
+  // ============================================================================
+  // Fallback System Event Subscriptions
+  // ============================================================================
+  // AIDEV-NOTE: Events for monitoring automatic model switching on rate limit
+  // AIDEV-WARNING: UI should handle these for user feedback
+
+  /** Emitted when fallback to alternate model starts */
+  onFallbackStarted: (callback: (data: {
+    taskId: string;
+    originalModel: string;
+    originalProvider: string;
+    fallbackModel: string;
+    fallbackProvider: string;
+    errorType: string;
+  }) => void) => {
+    const listener = (_: unknown, data: {
+      taskId: string;
+      originalModel: string;
+      originalProvider: string;
+      fallbackModel: string;
+      fallbackProvider: string;
+      errorType: string;
+    }) => callback(data);
+    ipcRenderer.on('fallback:started', listener);
+    return () => ipcRenderer.removeListener('fallback:started', listener);
+  },
+
+  /** Emitted when fallback completes (success or failure) */
+  onFallbackCompleted: (callback: (data: {
+    taskId: string;
+    success: boolean;
+    durationMs: number;
+  }) => void) => {
+    const listener = (_: unknown, data: {
+      taskId: string;
+      success: boolean;
+      durationMs: number;
+    }) => callback(data);
+    ipcRenderer.on('fallback:completed', listener);
+    return () => ipcRenderer.removeListener('fallback:completed', listener);
+  },
+
+  /** Emitted when fallback fails to initiate */
+  onFallbackFailed: (callback: (data: {
+    taskId: string;
+    error: string;
+    phase: string;
+  }) => void) => {
+    const listener = (_: unknown, data: {
+      taskId: string;
+      error: string;
+      phase: string;
+    }) => callback(data);
+    ipcRenderer.on('fallback:failed', listener);
+    return () => ipcRenderer.removeListener('fallback:failed', listener);
+  },
+
   logEvent: (payload: { level?: string; message: string; context?: Record<string, unknown> }) =>
     ipcRenderer.invoke('log:event', payload),
 
@@ -367,6 +424,42 @@ const jurisiarAPI = {
       successRate: number;
       avgDurationMs: number | null;
     }> => ipcRenderer.invoke('fallback:get-stats'),
+  },
+
+  // ============================================================================
+  // Auth API (Supabase Authentication)
+  // ============================================================================
+  // AIDEV-NOTE: Exposes authentication methods to renderer process
+  // AIDEV-WARNING: Tokens are stored securely via electron-store with AES-256-GCM
+  // AIDEV-SECURITY: Never log token values in renderer or main process
+
+  auth: {
+    /** Get Supabase configuration (URL and anon key) */
+    getSupabaseConfig: (): Promise<{ url: string; anonKey: string }> =>
+      ipcRenderer.invoke('auth:get-supabase-config'),
+
+    /** Store authentication token securely */
+    storeToken: (token: {
+      accessToken: string;
+      refreshToken: string;
+      expiresAt?: number;
+    }): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('auth:store-token', token),
+
+    /** Get stored authentication token */
+    getToken: (): Promise<{
+      accessToken: string;
+      refreshToken: string;
+      expiresAt?: number;
+    } | null> => ipcRenderer.invoke('auth:get-token'),
+
+    /** Clear stored authentication token (logout) */
+    clearToken: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('auth:clear-token'),
+
+    /** Check if authentication token exists */
+    hasToken: (): Promise<boolean> =>
+      ipcRenderer.invoke('auth:has-token'),
   },
 };
 

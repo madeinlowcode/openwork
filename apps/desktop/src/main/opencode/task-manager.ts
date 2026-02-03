@@ -355,6 +355,9 @@ export interface TaskProgressEvent {
 
 /**
  * Callbacks for task events - scoped to a specific task
+ *
+ * AIDEV-NOTE: Includes fallback system callbacks for rate limit handling
+ * AIDEV-WARNING: Fallback callbacks are optional for backward compatibility
  */
 export interface TaskCallbacks {
   onMessage: (message: OpenCodeMessage) => void;
@@ -366,6 +369,16 @@ export interface TaskCallbacks {
   onDebug?: (log: { type: string; message: string; data?: unknown }) => void;
   onTodoUpdate?: (todos: TodoItem[]) => void;
   onAuthError?: (error: { providerId: string; message: string }) => void;
+  // Fallback system callbacks
+  onFallbackStarted?: (data: {
+    originalModel: string;
+    originalProvider: string;
+    fallbackModel: string;
+    fallbackProvider: string;
+    errorType: string;
+  }) => void;
+  onFallbackCompleted?: (data: { success: boolean; durationMs: number }) => void;
+  onFallbackFailed?: (data: { error: string; phase: string }) => void;
 }
 
 /**
@@ -534,6 +547,28 @@ export class TaskManager {
       callbacks.onAuthError?.(error);
     };
 
+    // ================================================================
+    // FALLBACK SYSTEM: Event handlers for automatic model switching
+    // ================================================================
+    // AIDEV-NOTE: These handlers forward fallback events to the UI
+    const onFallbackStarted = (data: {
+      originalModel: string;
+      originalProvider: string;
+      fallbackModel: string;
+      fallbackProvider: string;
+      errorType: string;
+    }) => {
+      callbacks.onFallbackStarted?.(data);
+    };
+
+    const onFallbackCompleted = (data: { success: boolean; durationMs: number }) => {
+      callbacks.onFallbackCompleted?.(data);
+    };
+
+    const onFallbackFailed = (data: { error: string; phase: string }) => {
+      callbacks.onFallbackFailed?.(data);
+    };
+
     // Attach listeners
     adapter.on('message', onMessage);
     adapter.on('progress', onProgress);
@@ -543,6 +578,10 @@ export class TaskManager {
     adapter.on('debug', onDebug);
     adapter.on('todo:update', onTodoUpdate);
     adapter.on('auth-error', onAuthError);
+    // Fallback system listeners
+    adapter.on('fallback:started', onFallbackStarted);
+    adapter.on('fallback:completed', onFallbackCompleted);
+    adapter.on('fallback:failed', onFallbackFailed);
 
     // Create cleanup function
     const cleanup = () => {
@@ -554,6 +593,10 @@ export class TaskManager {
       adapter.off('debug', onDebug);
       adapter.off('todo:update', onTodoUpdate);
       adapter.off('auth-error', onAuthError);
+      // Fallback system cleanup
+      adapter.off('fallback:started', onFallbackStarted);
+      adapter.off('fallback:completed', onFallbackCompleted);
+      adapter.off('fallback:failed', onFallbackFailed);
       adapter.dispose();
     };
 

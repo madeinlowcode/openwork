@@ -10,21 +10,25 @@
  * - @accomplish/shared (TaskMessage)
  * - ./types.ts (ContextGeneratorOptions, ContextGenerationResult)
  * - ./tool-dictionary.ts (translateToolCall)
+ * - ../../supabase/edge-client.ts (callLLMSummarize, canCallEdgeFunctions)
  *
  * @relatedFiles
  * - apps/desktop/src/main/opencode/fallback/fallback-engine.ts (main consumer)
  * - apps/desktop/src/main/opencode/adapter.ts (message source)
+ * - supabase/functions/llm-summarize/index.ts (Edge Function de sumarizacao)
  *
  * @usedBy
  * - fallback-engine.ts (handleError method)
  *
  * AIDEV-NOTE: Two modes - template (free) and LLM (paid, more accurate)
- * AIDEV-WARNING: LLM mode requires valid API key for summarization model
+ * AIDEV-WARNING: LLM mode requires valid auth token and Supabase connection
+ * AIDEV-WARNING: LLM mode consumes tokens from user quota
  */
 
 import type { TaskMessage } from '@accomplish/shared';
 import type { ContextGeneratorOptions, ContextGenerationResult } from './types';
 import { translateToolCall } from './tool-dictionary';
+import { callLLMSummarize, canCallEdgeFunctions } from '../../supabase/edge-client';
 
 /**
  * Estimated tokens per character for context size estimation
@@ -42,6 +46,13 @@ const MAX_LAST_RESPONSE_CHARS = 500;
  * Maximum number of actions to include in context
  */
 const MAX_ACTIONS_IN_CONTEXT = 20;
+
+/**
+ * Maximum tokens for LLM summarization output
+ *
+ * AIDEV-NOTE: Keeps summaries concise and cost-effective
+ */
+const LLM_SUMMARY_MAX_TOKENS = 300;
 
 /**
  * Estimate token count from text length
@@ -65,23 +76,23 @@ function estimateTokens(text: string): number {
  */
 function extractActions(messages: TaskMessage[]): string[] {
   const actions: string[] = [];
-  
+
   for (const msg of messages) {
     if (msg.type === 'tool' && msg.toolName) {
       const description = translateToolCall(msg.toolName, msg.toolInput);
       actions.push(description);
     }
   }
-  
+
   // Limit to most recent actions if too many
   if (actions.length > MAX_ACTIONS_IN_CONTEXT) {
     const skipped = actions.length - MAX_ACTIONS_IN_CONTEXT;
     return [
-      `... (${skipped} ações anteriores omitidas)`,
+      `... (${skipped} acoes anteriores omitidas)`,
       ...actions.slice(-MAX_ACTIONS_IN_CONTEXT),
     ];
   }
-  
+
   return actions;
 }
 
@@ -118,6 +129,21 @@ function truncateText(text: string, maxLength: number): string {
 }
 
 /**
+ * Format actions as string for LLM input
+ *
+ * @param actions - Array of action descriptions
+ * @returns Formatted string with numbered actions
+ *
+ * AIDEV-NOTE: Used to prepare tool calls for Edge Function
+ */
+function formatActionsForLLM(actions: string[]): string {
+  if (actions.length === 0) {
+    return 'Nenhuma acao registrada';
+  }
+  return actions.map((action, index) => `${index + 1}. ${action}`).join('\n');
+}
+
+/**
  * Generate context using template method (free)
  *
  * @param originalPrompt - Original user task prompt
@@ -132,29 +158,29 @@ function generateTemplateContext(
 ): string {
   const actions = extractActions(messages);
   const lastResponse = getLastAssistantResponse(messages);
-  
+
   let context = `## Tarefa Original\n${originalPrompt}\n\n`;
-  
+
   if (actions.length > 0) {
     context += `## Progresso Anterior\n`;
-    context += `As seguintes ações já foram realizadas:\n`;
+    context += `As seguintes acoes ja foram realizadas:\n`;
     actions.forEach((action, index) => {
       context += `${index + 1}. ${action}\n`;
     });
     context += '\n';
   }
-  
+
   if (lastResponse) {
     const truncated = truncateText(lastResponse, MAX_LAST_RESPONSE_CHARS);
-    context += `## Última Resposta\n${truncated}\n\n`;
+    context += `## Ultima Resposta\n${truncated}\n\n`;
   }
-  
-  context += `## Instrução\n`;
-  context += `A tarefa foi interrompida por limite de requisições do modelo anterior. `;
+
+  context += `## Instrucao\n`;
+  context += `A tarefa foi interrompida por limite de requisicoes do modelo anterior. `;
   context += `Continue esta tarefa de onde parou. `;
-  context += `Não repita as ações já realizadas listadas acima. `;
-  context += `Se precisar verificar o estado atual, faça-o antes de prosseguir.\n`;
-  
+  context += `Nao repita as acoes ja realizadas listadas acima. `;
+  context += `Se precisar verificar o estado atual, faca-o antes de prosseguir.\n`;
+
   return context;
 }
 
@@ -163,44 +189,97 @@ function generateTemplateContext(
  *
  * @param originalPrompt - Original user task prompt
  * @param messages - Messages from the task session
- * @param options - Generator options with LLM configuration
+ * @param _options - Generator options with LLM configuration (used for logging)
  * @returns Promise resolving to context string
  *
- * AIDEV-NOTE: Makes API call to summarization model
- * AIDEV-WARNING: Requires valid llmModelId and llmProvider
- * AIDEV-TODO: Implement actual LLM call when API integration is ready
+ * AIDEV-NOTE: Calls Edge Function llm-summarize for intelligent summarization
+ * AIDEV-WARNING: Consumes tokens from user quota
+ * AIDEV-WARNING: Falls back to template if LLM call fails
  */
 async function generateLLMContext(
   originalPrompt: string,
   messages: TaskMessage[],
-  options: ContextGeneratorOptions
-): Promise<string> {
-  // AIDEV-TODO: Implement LLM-based summarization
-  // For now, fall back to template with a note
-  // 
-  // Future implementation should:
-  // 1. Build a prompt asking LLM to summarize the conversation
-  // 2. Call the summarization model API
-  // 3. Return the summarized context
-  //
-  // Example prompt for LLM:
-  // "Resuma o progresso desta tarefa de forma concisa para continuar com outro modelo:
-  //  - Tarefa original: {originalPrompt}
-  //  - Mensagens: {messages}
-  //  - Foque nas ações realizadas e próximos passos"
-  
-  console.warn(
-    '[FallbackEngine] LLM summarization not yet implemented, using template mode. ' +
-    `Configured model: ${options.llmModelId}, provider: ${options.llmProvider}`
-  );
-  
-  // Use template as fallback until LLM integration is complete
-  let context = generateTemplateContext(originalPrompt, messages);
-  
-  // Add note about LLM mode intent
-  context += `\n(Nota: Modo de sumarização LLM configurado mas usando template temporariamente)\n`;
-  
-  return context;
+  _options: ContextGeneratorOptions
+): Promise<{ context: string; usedLLM: boolean }> {
+  // Verificar se podemos fazer chamadas ao backend
+  if (!canCallEdgeFunctions()) {
+    console.warn(
+      '[ContextGenerator] Cannot call Edge Functions - not authenticated or Supabase not configured. ' +
+      'Falling back to template mode.'
+    );
+    return {
+      context: generateTemplateContext(originalPrompt, messages),
+      usedLLM: false,
+    };
+  }
+
+  // Preparar dados para a Edge Function
+  const actions = extractActions(messages);
+  const toolCallsText = formatActionsForLLM(actions);
+  const lastResponse = getLastAssistantResponse(messages);
+
+  try {
+    console.log('[ContextGenerator] Calling llm-summarize Edge Function...');
+
+    const result = await callLLMSummarize({
+      taskDescription: originalPrompt,
+      toolCalls: toolCallsText,
+      lastResponse: lastResponse ? truncateText(lastResponse, MAX_LAST_RESPONSE_CHARS) : undefined,
+      maxTokens: LLM_SUMMARY_MAX_TOKENS,
+    });
+
+    if (result.success && result.data?.summary) {
+      console.log(
+        `[ContextGenerator] LLM summarization successful. ` +
+        `Tokens used: ${result.data.tokens_used}, Model: ${result.data.model}`
+      );
+
+      // Construir contexto com resumo do LLM
+      let context = `## Tarefa Original\n${originalPrompt}\n\n`;
+      context += `## Resumo do Progresso\n${result.data.summary}\n\n`;
+      context += `## Instrucao\n`;
+      context += `A tarefa foi interrompida por limite de requisicoes do modelo anterior. `;
+      context += `Continue esta tarefa com base no resumo acima. `;
+      context += `Nao repita acoes ja realizadas.\n`;
+
+      // Log quota info se disponivel
+      if (result.data._quota) {
+        console.log(
+          `[ContextGenerator] Quota remaining - ` +
+          `Tokens: ${result.data._quota.tokens_remaining}, ` +
+          `Fallbacks: ${result.data._quota.fallbacks_remaining}`
+        );
+      }
+
+      return {
+        context,
+        usedLLM: true,
+      };
+    }
+
+    // LLM call retornou erro - fazer fallback para template
+    console.warn(
+      `[ContextGenerator] LLM summarization failed: ${result.error || 'Unknown error'}. ` +
+      `Status: ${result.statusCode}. Falling back to template mode.`
+    );
+
+    return {
+      context: generateTemplateContext(originalPrompt, messages),
+      usedLLM: false,
+    };
+  } catch (error) {
+    // Erro inesperado - fazer fallback para template
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[ContextGenerator] Unexpected error during LLM summarization: ${errorMsg}. ` +
+      'Falling back to template mode.'
+    );
+
+    return {
+      context: generateTemplateContext(originalPrompt, messages),
+      usedLLM: false,
+    };
+  }
 }
 
 /**
@@ -220,6 +299,7 @@ async function generateLLMContext(
  * console.log(result.context);
  *
  * AIDEV-NOTE: Chooses between template and LLM based on options.useLLM
+ * AIDEV-WARNING: LLM mode may fall back to template if call fails
  */
 export async function generateContinuationContext(
   originalPrompt: string,
@@ -228,15 +308,19 @@ export async function generateContinuationContext(
 ): Promise<ContextGenerationResult> {
   let context: string;
   let method: 'template' | 'llm';
-  
-  if (options.useLLM && options.llmModelId && options.llmProvider) {
-    context = await generateLLMContext(originalPrompt, messages, options);
-    method = 'llm';
+
+  if (options.useLLM) {
+    // Tentar usar LLM para sumarizacao
+    // AIDEV-NOTE: Nao requer mais llmModelId/llmProvider - Edge Function usa modelo padrao
+    const llmResult = await generateLLMContext(originalPrompt, messages, options);
+    context = llmResult.context;
+    method = llmResult.usedLLM ? 'llm' : 'template';
   } else {
+    // Usar template (gratuito)
     context = generateTemplateContext(originalPrompt, messages);
     method = 'template';
   }
-  
+
   // Apply token limit if specified
   if (options.maxTokens) {
     const maxChars = Math.floor(options.maxTokens / TOKENS_PER_CHAR);
@@ -244,9 +328,9 @@ export async function generateContinuationContext(
       context = truncateText(context, maxChars);
     }
   }
-  
+
   const tokenCount = estimateTokens(context);
-  
+
   return {
     context,
     method,
@@ -269,18 +353,18 @@ export function generateMinimalContext(
 ): string {
   const actions = extractActions(messages);
   const recentActions = actions.slice(-5); // Only last 5 actions
-  
+
   let context = `Tarefa: ${truncateText(originalPrompt, 200)}\n\n`;
-  
+
   if (recentActions.length > 0) {
-    context += `Ações recentes:\n`;
+    context += `Acoes recentes:\n`;
     recentActions.forEach((action) => {
       context += `- ${action}\n`;
     });
   }
-  
-  context += `\nContinue de onde parou. Não repita ações.`;
-  
+
+  context += `\nContinue de onde parou. Nao repita acoes.`;
+
   return context;
 }
 
@@ -301,7 +385,7 @@ export function getContextStats(messages: TaskMessage[]): {
   let toolCalls = 0;
   let assistantMessages = 0;
   let totalChars = 0;
-  
+
   for (const msg of messages) {
     if (msg.type === 'tool') {
       toolCalls++;
@@ -310,11 +394,22 @@ export function getContextStats(messages: TaskMessage[]): {
     }
     totalChars += (msg.content || '').length;
   }
-  
+
   return {
     totalMessages: messages.length,
     toolCalls,
     assistantMessages,
     estimatedTokens: estimateTokens(String(totalChars)),
   };
+}
+
+/**
+ * Check if LLM summarization is available
+ *
+ * @returns boolean indicating if LLM summarization can be used
+ *
+ * AIDEV-NOTE: Useful for UI to show/hide LLM option
+ */
+export function isLLMSummarizationAvailable(): boolean {
+  return canCallEdgeFunctions();
 }

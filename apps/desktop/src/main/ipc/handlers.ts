@@ -468,6 +468,33 @@ export function registerIPCHandlers(): void {
         // Forward auth error to renderer so it can show re-login toast
         forwardToRenderer('auth:error', error);
       },
+
+      // ================================================================
+      // FALLBACK SYSTEM: Callbacks for automatic model switching
+      // ================================================================
+      // AIDEV-NOTE: Forward fallback events to renderer for UI updates
+      // AIDEV-WARNING: These events may trigger UI state changes
+
+      onFallbackStarted: (data: {
+        originalModel: string;
+        originalProvider: string;
+        fallbackModel: string;
+        fallbackProvider: string;
+        errorType: string;
+      }) => {
+        console.log('[IPC] Fallback started:', data);
+        forwardToRenderer('fallback:started', { taskId, ...data });
+      },
+
+      onFallbackCompleted: (data: { success: boolean; durationMs: number }) => {
+        console.log('[IPC] Fallback completed:', data);
+        forwardToRenderer('fallback:completed', { taskId, ...data });
+      },
+
+      onFallbackFailed: (data: { error: string; phase: string }) => {
+        console.log('[IPC] Fallback failed:', data);
+        forwardToRenderer('fallback:failed', { taskId, ...data });
+      },
     };
 
     // Start the task via TaskManager (creates isolated adapter or queues if busy)
@@ -723,6 +750,32 @@ export function registerIPCHandlers(): void {
 
       onTodoUpdate: (todos: TodoItem[]) => {
         forwardToRenderer('todo:update', { taskId, todos });
+      },
+
+      // ================================================================
+      // FALLBACK SYSTEM: Callbacks for session resume
+      // ================================================================
+      // AIDEV-NOTE: Same fallback handling for resumed sessions
+
+      onFallbackStarted: (data: {
+        originalModel: string;
+        originalProvider: string;
+        fallbackModel: string;
+        fallbackProvider: string;
+        errorType: string;
+      }) => {
+        console.log('[IPC] Fallback started (resume):', data);
+        forwardToRenderer('fallback:started', { taskId, ...data });
+      },
+
+      onFallbackCompleted: (data: { success: boolean; durationMs: number }) => {
+        console.log('[IPC] Fallback completed (resume):', data);
+        forwardToRenderer('fallback:completed', { taskId, ...data });
+      },
+
+      onFallbackFailed: (data: { error: string; phase: string }) => {
+        console.log('[IPC] Fallback failed (resume):', data);
+        forwardToRenderer('fallback:failed', { taskId, ...data });
       },
     };
 
@@ -2518,6 +2571,56 @@ export function registerIPCHandlers(): void {
   // Fallback: Get usage statistics
   handle('fallback:get-stats', async () => {
     return getFallbackStats();
+  });
+
+  // ============================================================================
+  // Auth Handlers (Supabase Authentication)
+  // ============================================================================
+  // AIDEV-NOTE: Handles authentication token storage and Supabase configuration
+  // AIDEV-WARNING: These handlers manage sensitive auth tokens - never log token values
+  // AIDEV-SECURITY: Tokens are encrypted via AES-256-GCM in secureStorage
+
+  // Auth: Get Supabase configuration (URL and anon key)
+  // AIDEV-NOTE: Returns public config only - service_role_key is never exposed
+  handle('auth:get-supabase-config', async () => {
+    // AIDEV-NOTE: These values come from environment variables or config
+    // In production, these should be set during build or from secure config
+    const config = getDesktopConfig();
+    return {
+      url: config.supabaseUrl || process.env.SUPABASE_URL || '',
+      anonKey: config.supabaseAnonKey || process.env.SUPABASE_ANON_KEY || '',
+    };
+  });
+
+  // Auth: Store authentication token securely
+  // AIDEV-WARNING: Token is encrypted before storage - never log the token value
+  handle('auth:store-token', async (
+    _event: IpcMainInvokeEvent,
+    token: { accessToken: string; refreshToken: string; expiresAt?: number }
+  ) => {
+    const { storeAuthToken } = await import('../store/secureStorage');
+    storeAuthToken(token);
+    return { success: true };
+  });
+
+  // Auth: Retrieve stored authentication token
+  // AIDEV-NOTE: Returns null if no token is stored or token is invalid
+  handle('auth:get-token', async () => {
+    const { getAuthToken } = await import('../store/secureStorage');
+    return getAuthToken();
+  });
+
+  // Auth: Clear stored authentication token (logout)
+  handle('auth:clear-token', async () => {
+    const { clearAuthToken } = await import('../store/secureStorage');
+    clearAuthToken();
+    return { success: true };
+  });
+
+  // Auth: Check if authentication token exists
+  handle('auth:has-token', async () => {
+    const { hasAuthToken } = await import('../store/secureStorage');
+    return hasAuthToken();
   });
 }
 

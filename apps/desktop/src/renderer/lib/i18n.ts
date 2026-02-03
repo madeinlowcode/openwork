@@ -33,6 +33,7 @@ import ptBRStatus from '../locales/pt-BR/status.json';
 import ptBRExecution from '../locales/pt-BR/execution.json';
 import ptBRTools from '../locales/pt-BR/tools.json';
 import ptBRFallback from '../locales/pt-BR/fallback.json';
+import ptBRAuth from '../locales/pt-BR/auth.json';
 import enCommon from '../locales/en/common.json';
 import enHome from '../locales/en/home.json';
 import enSettings from '../locales/en/settings.json';
@@ -42,6 +43,7 @@ import enStatus from '../locales/en/status.json';
 import enExecution from '../locales/en/execution.json';
 import enTools from '../locales/en/tools.json';
 import enFallback from '../locales/en/fallback.json';
+import enAuth from '../locales/en/auth.json';
 
 /**
  * Recursos de traducao organizados por idioma e namespace
@@ -58,6 +60,7 @@ const resources = {
     execution: ptBRExecution,
     tools: ptBRTools,
     fallback: ptBRFallback,
+    auth: ptBRAuth,
   },
   en: {
     common: enCommon,
@@ -69,6 +72,7 @@ const resources = {
     execution: enExecution,
     tools: enTools,
     fallback: enFallback,
+    auth: enAuth,
   },
 };
 
@@ -99,7 +103,7 @@ i18n.use(initReactI18next).init({
 
   // Namespace padrao usado quando nao especificado
   defaultNS: 'common',
-  ns: ['common', 'home', 'settings', 'providers', 'speech', 'status', 'execution', 'tools', 'fallback'],
+  ns: ['common', 'home', 'settings', 'providers', 'speech', 'status', 'execution', 'tools', 'fallback', 'auth'],
 
   interpolation: {
     escapeValue: false, // React ja faz escape de XSS

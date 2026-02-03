@@ -41,5 +41,16 @@
   "error": {
     "loadFailed": "Falha ao carregar configuracoes de fallback",
     "saveFailed": "Falha ao salvar configuracoes de fallback"
+  },
+  "notification": {
+    "title": "Fallback Automatico Ativado",
+    "message": "O modelo {{originalModel}} atingiu o limite de requisicoes. Continuando com {{fallbackModel}}.",
+    "contextGenerated": "Contexto do trabalho anterior foi preservado.",
+    "contextMethod": {
+      "llm": "Resumo inteligente gerado por IA",
+      "template": "Contexto gerado por template"
+    },
+    "dismiss": "Entendi",
+    "details": "Ver detalhes"
   }
 }

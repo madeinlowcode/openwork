@@ -193,6 +193,23 @@ interface JurisiarAPI {
   exportLogs(): Promise<{ success: boolean; path?: string; error?: string; reason?: string }>;
 
   // ============================================================================
+  // Window Controls API (for TitleBar)
+  // ============================================================================
+  // AIDEV-NOTE: Window control methods for custom title bar
+  // AIDEV-WARNING: These are optional and may not be implemented yet
+
+  /** Check if window is maximized */
+  isWindowMaximized?(): Promise<boolean>;
+  /** Minimize the window */
+  minimizeWindow?(): void;
+  /** Maximize/restore the window */
+  maximizeWindow?(): void;
+  /** Close the window */
+  closeWindow?(): void;
+  /** Subscribe to window state changes */
+  onWindowStateChange?(callback: (state: { isMaximized: boolean }) => void): () => void;
+
+  // ============================================================================
   // Fallback Settings API
   // ============================================================================
   // AIDEV-NOTE: Provides access to fallback system configuration and logging
@@ -216,6 +233,35 @@ interface JurisiarAPI {
       successRate: number;
       avgDurationMs: number | null;
     }>;
+  };
+
+  // ============================================================================
+  // Auth API (Supabase Authentication)
+  // ============================================================================
+  // AIDEV-NOTE: Provides access to authentication functions
+  // AIDEV-WARNING: Tokens are stored securely via electron-store with AES-256-GCM
+  // AIDEV-SECURITY: Never log token values
+
+  /** Authentication API */
+  auth?: {
+    /** Get Supabase configuration (URL and anon key) */
+    getSupabaseConfig(): Promise<{ url: string; anonKey: string }>;
+    /** Store authentication token securely */
+    storeToken(token: {
+      accessToken: string;
+      refreshToken: string;
+      expiresAt?: number;
+    }): Promise<{ success: boolean }>;
+    /** Get stored authentication token */
+    getToken(): Promise<{
+      accessToken: string;
+      refreshToken: string;
+      expiresAt?: number;
+    } | null>;
+    /** Clear stored authentication token (logout) */
+    clearToken(): Promise<{ success: boolean }>;
+    /** Check if authentication token exists */
+    hasToken(): Promise<boolean>;
   };
 }
 

@@ -1,3 +1,31 @@
+/**
+ * @component App
+ * @description Componente principal do aplicativo Jurisiar - gerencia rotas e estado global
+ *
+ * @context Root component - renderizado pelo main.tsx
+ *
+ * @dependencies
+ * - react-router-dom (Routes, Route, Navigate, useLocation)
+ * - framer-motion (AnimatePresence, motion)
+ * - lib/jurisiar.ts (isRunningInElectron, getJurisiar)
+ * - lib/animations.ts (springs, variants)
+ * - stores/taskStore.ts (useTaskStore)
+ *
+ * @relatedFiles
+ * - main.tsx (renderiza este componente)
+ * - pages/Home.tsx (rota /)
+ * - pages/Execution.tsx (rota /execution/:id)
+ * - pages/Auth.tsx (rota /auth)
+ * - components/layout/Sidebar.tsx (navegacao lateral)
+ *
+ * @stateManagement
+ * - useState: status, errorMessage, authSettingsOpen, authSettingsProvider
+ * - useTaskStore: openLauncher, authError, clearAuthError
+ *
+ * AIDEV-WARNING: Rotas protegidas devem usar AuthGuard
+ * AIDEV-NOTE: Rota /auth nao usa Sidebar nem AuthGuard (pagina publica)
+ */
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -10,6 +38,7 @@ import type { ProviderId } from '@accomplish/shared';
 // Pages
 import HomePage from './pages/Home';
 import ExecutionPage from './pages/Execution';
+import AuthPage from './pages/Auth';
 
 // Components
 import Sidebar from './components/layout/Sidebar';
@@ -111,7 +140,32 @@ const { openLauncher, authError, clearAuthError } = useTaskStore();
     );
   }
 
-  // Ready - render the app with sidebar
+  // AIDEV-NOTE: Verificar se esta na rota /auth (pagina publica sem sidebar)
+  const isAuthRoute = location.pathname === '/auth';
+
+  // AIDEV-NOTE: Rota /auth e renderizada sem sidebar e sem protecao
+  if (isAuthRoute) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Invisible drag region for window dragging (macOS hiddenInset titlebar) */}
+        <div className="drag-region fixed top-0 left-0 right-0 h-10 z-50 pointer-events-none" />
+        <AnimatePresence mode="wait">
+          <motion.div
+            className="h-full"
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={variants.fadeUp}
+            transition={springs.gentle}
+          >
+            <AuthPage />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // Ready - render the app with sidebar (rotas protegidas)
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Invisible drag region for window dragging (macOS hiddenInset titlebar) */}
@@ -150,6 +204,8 @@ const { openLauncher, authError, clearAuthError } = useTaskStore();
                 </motion.div>
               }
             />
+            {/* AIDEV-NOTE: Rota /auth e tratada acima, mas manter fallback aqui */}
+            <Route path="/auth" element={<AuthPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AnimatePresence>

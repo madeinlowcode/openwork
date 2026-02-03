@@ -41,5 +41,16 @@
   "error": {
     "loadFailed": "Failed to load fallback settings",
     "saveFailed": "Failed to save fallback settings"
+  },
+  "notification": {
+    "title": "Automatic Fallback Activated",
+    "message": "Model {{originalModel}} reached rate limit. Continuing with {{fallbackModel}}.",
+    "contextGenerated": "Previous work context has been preserved.",
+    "contextMethod": {
+      "llm": "AI-generated intelligent summary",
+      "template": "Template-generated context"
+    },
+    "dismiss": "Got it",
+    "details": "View details"
   }
 }

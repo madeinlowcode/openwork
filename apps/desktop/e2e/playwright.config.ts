@@ -34,14 +34,24 @@ export default defineConfig({
   projects: [
     {
       name: 'electron-fast',
-      testMatch: /.*(home|execution|settings|settings-bedrock|settings-fallback)\.spec\.ts/,
+      testMatch: '**/+(home|execution|settings|settings-bedrock|settings-fallback|fallback-ui).spec.ts',
       timeout: 60000,
     },
     {
+      name: 'electron-auth',
+      testMatch: '**/+(auth|auth-ui|auth-fallback-integration|secure-storage).spec.ts',
+      timeout: 90000,
+    },
+    {
       name: 'electron-integration',
-      testMatch: /.*integration\.spec\.ts/,
+      testMatch: '**/+(fallback-integration|fallback-flow).spec.ts',
       timeout: 120000,
       retries: 0,
+    },
+    {
+      name: 'electron-edge-client',
+      testMatch: '**/edge-client.spec.ts',
+      timeout: 90000,
     }
   ],
 });
