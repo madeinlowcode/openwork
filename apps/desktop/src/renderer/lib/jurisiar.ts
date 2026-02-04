@@ -41,6 +41,14 @@ interface JurisiarAPI {
   getTask(taskId: string): Promise<Task | null>;
   listTasks(): Promise<Task[]>;
   deleteTask(taskId: string): Promise<void>;
+  /**
+   * @method deleteTasksMany
+   * @description Exclui múltiplas tarefas de uma vez
+   * @param {string[]} taskIds - Array de IDs das tarefas a serem excluídas
+   * @returns {Promise<number>} Número de tarefas excluídas
+   * ⚠️ AIDEV-WARNING: Limite de 100 IDs por chamada
+   */
+  deleteTasksMany(taskIds: string[]): Promise<number>;
   clearTaskHistory(): Promise<void>;
 
   // Permission responses

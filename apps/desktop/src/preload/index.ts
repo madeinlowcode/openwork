@@ -29,6 +29,17 @@ const jurisiarAPI = {
   listTasks: (): Promise<unknown[]> => ipcRenderer.invoke('task:list'),
   deleteTask: (taskId: string): Promise<void> =>
     ipcRenderer.invoke('task:delete', taskId),
+  /**
+   * @method deleteTasksMany
+   * @description Exclui múltiplas tarefas de uma vez
+   *
+   * @param {string[]} taskIds - Array de IDs das tarefas a serem excluídas
+   * @returns {Promise<number>} Número de tarefas excluídas
+   *
+   * ⚠️ AIDEV-WARNING: Limite de 100 IDs por chamada
+   */
+  deleteTasksMany: (taskIds: string[]): Promise<number> =>
+    ipcRenderer.invoke('task:delete-many', taskIds),
   clearTaskHistory: (): Promise<void> => ipcRenderer.invoke('task:clear-history'),
 
   // Permission responses

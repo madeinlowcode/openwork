@@ -68,6 +68,11 @@ interface TaskState {
   openLauncher: () => void;
   closeLauncher: () => void;
 
+  // Multi-select state
+  // AIDEV-NOTE: Set para performance O(1) em verificações de seleção
+  selectedTaskIds: Set<string>;
+  isSelectionMode: boolean;
+
   // Actions
   startTask: (config: TaskConfig) => Promise<Task | null>;
   setSetupProgress: (taskId: string | null, message: string | null) => void;
@@ -91,6 +96,15 @@ interface TaskState {
   clearTodos: () => void;
   setAuthError: (error: { providerId: string; message: string }) => void;
   clearAuthError: () => void;
+
+  // Multi-select actions
+  // AIDEV-WARNING: toggleTaskSelection auto-entra no modo seleção se não estiver ativo
+  toggleTaskSelection: (taskId: string) => void;
+  selectAllTasks: () => void;
+  clearSelection: () => void;
+  enterSelectionMode: () => void;
+  exitSelectionMode: () => void;
+  deleteSelectedTasks: () => Promise<number>;
 }
 
 function createMessageId(): string {
@@ -112,6 +126,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   todosTaskId: null,
   authError: null,
   isLauncherOpen: false,
+  // Multi-select state
+  selectedTaskIds: new Set<string>(),
+  isSelectionMode: false,
 
   setSetupProgress: (taskId: string | null, message: string | null) => {
     // Detect which package is being downloaded from the message
@@ -543,6 +560,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       todosTaskId: null,
       authError: null,
       isLauncherOpen: false,
+      // Multi-select reset
+      selectedTaskIds: new Set<string>(),
+      isSelectionMode: false,
     });
   },
 
@@ -564,6 +584,72 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   openLauncher: () => set({ isLauncherOpen: true }),
   closeLauncher: () => set({ isLauncherOpen: false }),
+
+  // Multi-select actions
+  // AIDEV-WARNING: toggleTaskSelection auto-entra no modo seleção se não estiver ativo
+  toggleTaskSelection: (taskId: string) => {
+    set((state) => {
+      const newSelected = new Set(state.selectedTaskIds);
+      if (newSelected.has(taskId)) {
+        newSelected.delete(taskId);
+      } else {
+        newSelected.add(taskId);
+      }
+      return {
+        selectedTaskIds: newSelected,
+        // Auto-enter selection mode when selecting via Shift+Click
+        isSelectionMode: newSelected.size > 0 ? true : state.isSelectionMode,
+      };
+    });
+  },
+
+  selectAllTasks: () => {
+    set((state) => ({
+      selectedTaskIds: new Set(state.tasks.map((t) => t.id)),
+    }));
+  },
+
+  clearSelection: () => {
+    set({ selectedTaskIds: new Set<string>() });
+  },
+
+  enterSelectionMode: () => {
+    set({ isSelectionMode: true });
+  },
+
+  exitSelectionMode: () => {
+    set({
+      isSelectionMode: false,
+      selectedTaskIds: new Set<string>(),
+    });
+  },
+
+  /**
+   * @action deleteSelectedTasks
+   * @description Exclui todas as tarefas selecionadas via IPC
+   *
+   * @returns {Promise<number>} Número de tarefas excluídas
+   *
+   * ⚠️ AIDEV-WARNING: Sai do modo seleção automaticamente após exclusão
+   * AIDEV-NOTE: Atualiza estado local após confirmação do backend
+   */
+  deleteSelectedTasks: async () => {
+    const jurisiar = getJurisiar();
+    const { selectedTaskIds, tasks } = get();
+    const idsToDelete = Array.from(selectedTaskIds);
+
+    if (idsToDelete.length === 0) return 0;
+
+    const deletedCount = await jurisiar.deleteTasksMany(idsToDelete);
+
+    set({
+      tasks: tasks.filter((t) => !selectedTaskIds.has(t.id)),
+      selectedTaskIds: new Set<string>(),
+      isSelectionMode: false,
+    });
+
+    return deletedCount;
+  },
 }));
 
 // Startup stages that should be tracked (before first tool runs)

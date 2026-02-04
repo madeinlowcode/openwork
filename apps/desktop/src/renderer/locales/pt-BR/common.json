@@ -82,5 +82,16 @@
   },
   "historyPage": {
     "title": "Historico de Tarefas"
+  },
+  "selection": {
+    "enterMode": "Selecionar varios",
+    "cancel": "Cancelar selecao",
+    "selectAll": "Selecionar todos",
+    "deleteSelected": "Excluir selecionados",
+    "selected_one": "{{count}} selecionado",
+    "selected_other": "{{count}} selecionados",
+    "confirmDeleteTitle": "Excluir Tarefas Selecionadas",
+    "confirmDeleteMessage_one": "Tem certeza que deseja excluir {{count}} tarefa? Esta acao nao pode ser desfeita.",
+    "confirmDeleteMessage_other": "Tem certeza que deseja excluir {{count}} tarefas? Esta acao nao pode ser desfeita."
   }
 }

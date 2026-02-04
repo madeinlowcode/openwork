@@ -82,5 +82,16 @@
   },
   "historyPage": {
     "title": "Task History"
+  },
+  "selection": {
+    "enterMode": "Select multiple",
+    "cancel": "Cancel selection",
+    "selectAll": "Select all",
+    "deleteSelected": "Delete selected",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "confirmDeleteTitle": "Delete Selected Tasks",
+    "confirmDeleteMessage_one": "Are you sure you want to delete {{count}} task? This action cannot be undone.",
+    "confirmDeleteMessage_other": "Are you sure you want to delete {{count}} tasks? This action cannot be undone."
   }
 }

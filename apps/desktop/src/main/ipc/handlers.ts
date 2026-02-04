@@ -23,6 +23,7 @@ import {
   updateTaskSummary,
   addTaskMessage,
   deleteTask,
+  deleteTasks,
   clearHistory,
 } from '../store/taskHistory';
 import { generateTaskSummary } from '../services/summarizer';
@@ -567,6 +568,30 @@ export function registerIPCHandlers(): void {
   // Task: Delete task from history
   handle('task:delete', async (_event: IpcMainInvokeEvent, taskId: string) => {
     deleteTask(taskId);
+  });
+
+  /**
+   * @ipc task:delete-many
+   * @description Exclui múltiplas tarefas de uma vez
+   *
+   * @param {string[]} taskIds - Array de IDs das tarefas a serem excluídas
+   * @returns {number} Número de tarefas excluídas
+   *
+   * ⚠️ AIDEV-WARNING: Limite de 100 IDs por chamada para prevenir abusos
+   * AIDEV-SECURITY: IDs são sanitizados antes da operação
+   */
+  handle('task:delete-many', async (_event: IpcMainInvokeEvent, taskIds: string[]) => {
+    if (!Array.isArray(taskIds)) {
+      throw new Error('taskIds must be an array');
+    }
+
+    const sanitizedIds = taskIds
+      .filter((id): id is string => typeof id === 'string')
+      .map((id) => sanitizeString(id, 'taskId', 128))
+      .slice(0, 100);
+
+    if (sanitizedIds.length === 0) return 0;
+    return deleteTasks(sanitizedIds);
   });
 
   // Task: Clear all history

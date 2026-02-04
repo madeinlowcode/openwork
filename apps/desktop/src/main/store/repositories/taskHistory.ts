@@ -252,6 +252,29 @@ export function deleteTask(taskId: string): void {
   db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
 }
 
+/**
+ * @function deleteTasks
+ * @description Exclui múltiplas tarefas de uma vez usando transação SQLite
+ *
+ * @param {string[]} taskIds - Array de IDs das tarefas a serem excluídas
+ * @returns {number} Número de tarefas excluídas
+ *
+ * ⚠️ AIDEV-WARNING: Exclusão em cascata - messages e attachments são removidos automaticamente
+ * AIDEV-NOTE: Usa transação para garantir atomicidade da operação
+ */
+export function deleteTasks(taskIds: string[]): number {
+  if (taskIds.length === 0) return 0;
+
+  const db = getDatabase();
+
+  return db.transaction(() => {
+    const placeholders = taskIds.map(() => '?').join(', ');
+    const stmt = db.prepare(`DELETE FROM tasks WHERE id IN (${placeholders})`);
+    const result = stmt.run(...taskIds);
+    return result.changes;
+  })();
+}
+
 export function clearHistory(): void {
   const db = getDatabase();
   db.prepare('DELETE FROM tasks').run();
