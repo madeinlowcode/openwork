@@ -194,20 +194,26 @@ export default function Sidebar() {
                 {t('navigation.newTask')}
               </Button>
               {/* Ícones clicáveis minimalistas */}
-              <Search
+              <span
                 onClick={openLauncher}
-                className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                 title={t('navigation.searchTasks')}
-              />
-              <CheckSquare
+                className="cursor-pointer"
+              >
+                <Search className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+              </span>
+              <span
                 onClick={tasks.length > 0 ? enterSelectionMode : undefined}
-                className={`h-4 w-4 transition-colors ${
-                  tasks.length > 0
-                    ? 'text-muted-foreground hover:text-foreground cursor-pointer'
-                    : 'text-muted-foreground/40 cursor-not-allowed'
-                }`}
                 title={t('selection.enterMode')}
-              />
+                className={tasks.length > 0 ? 'cursor-pointer' : 'cursor-not-allowed'}
+              >
+                <CheckSquare
+                  className={`h-4 w-4 transition-colors ${
+                    tasks.length > 0
+                      ? 'text-muted-foreground hover:text-foreground'
+                      : 'text-muted-foreground/40'
+                  }`}
+                />
+              </span>
             </div>
           )}
         </div>

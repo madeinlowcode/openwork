@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import { app, BrowserWindow, shell, ipcMain, nativeImage, dialog } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, nativeImage, dialog, Menu } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -191,6 +191,9 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     // Initialize i18n with system locale
     setLocale(app.getLocale());
+
+    // Remove native menu bar (File, Edit, View, Window, Help)
+    Menu.setApplicationMenu(null);
 
     console.log('[Main] Electron app ready, version:', app.getVersion());
 
