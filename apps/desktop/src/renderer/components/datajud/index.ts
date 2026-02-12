@@ -17,6 +17,7 @@
  */
 
 export { DataJudQueryForm } from './DataJudQueryForm';
+export { DataJudResults } from './DataJudResults';
 export { DataJudResultCard } from './DataJudResultCard';
 export { DataJudMovementTimeline } from './DataJudMovementTimeline';
 export { DataJudResultsRenderer } from './DataJudResultsRenderer';

@@ -10,14 +10,18 @@
  * - react-i18next (useTranslation para traducoes)
  * - components/landing/TaskInputBar (input de tarefa)
  * - stores/taskStore (gerenciamento de tarefas)
+ * - components/datajud (DataJudQueryForm, DataJudResults)
  *
  * @relatedFiles
  * - locales/pt-BR/home.json (traducoes especificas da home)
  * - locales/en/home.json (traducoes especificas da home)
  * - TaskInputBar.tsx (componente de input)
+ * - DataJudQueryForm.tsx (formulario de busca DataJud)
+ * - DataJudResults.tsx (exibicao de resultados DataJud)
  *
  * AIDEV-NOTE: Traducoes usam namespace 'home' para textos especificos
  * AIDEV-NOTE: Namespace 'common' usado para acoes gerais
+ * AIDEV-WARNING: DataJud agora usa IPC direto via onResult, nao mais onSubmit com prompt
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -26,7 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import TaskInputBar from '../components/landing/TaskInputBar';
 import SettingsDialog from '../components/layout/SettingsDialog';
-import { DataJudQueryForm } from '../components/datajud';
+import { DataJudQueryForm, DataJudResults } from '../components/datajud';
 import { useTaskStore } from '../stores/taskStore';
 import { getJurisiar } from '../lib/jurisiar';
 import { springs, staggerContainer, staggerItem } from '../lib/animations';
@@ -42,9 +46,7 @@ import {
   MapPin,
   FileSearch,
   FileOutput,
-  Archive,
-  History,
-  Users,
+  Database,
   type LucideIcon,
 } from 'lucide-react';
 import { hasAnyReadyProvider } from '@accomplish/shared';
@@ -66,10 +68,8 @@ const USE_CASE_KEYS: ReadonlyArray<{ key: string; icon: LucideIcon }> = [
   { key: 'consultarCep', icon: MapPin },
   { key: 'analisarPeca', icon: FileSearch },
   { key: 'extrairClausulas', icon: FileOutput },
-  // DataJud use cases
-  { key: 'dataJudNumero', icon: Archive },
-  { key: 'dataJudMovimentacoes', icon: History },
-  { key: 'dataJudParte', icon: Users },
+  // DataJud - card unico que abre dialog com tipos de consulta
+  { key: 'dataJud', icon: Database },
 ];
 
 export default function HomePage() {
@@ -80,7 +80,9 @@ export default function HomePage() {
   const [settingsInitialTab, setSettingsInitialTab] = useState<'providers' | 'voice' | 'datajud'>('providers');
   // AIDEV-NOTE: Estado para o modal do formulario DataJud
   const [showDataJudForm, setShowDataJudForm] = useState(false);
-  const [dataJudInitialType, setDataJudInitialType] = useState<'number' | 'class' | 'party' | 'dateRange'>('number');
+  // AIDEV-NOTE: Estados para resultados do DataJud
+  const [dataJudResults, setDataJudResults] = useState<any | null>(null);
+  const [showDataJudResults, setShowDataJudResults] = useState(false);
   const { startTask, isLoading, addTaskUpdate, setPermissionRequest } = useTaskStore();
   const navigate = useNavigate();
   const jurisiar = getJurisiar();
@@ -154,38 +156,29 @@ export default function HomePage() {
   };
 
   /**
-   * AIDEV-NODE: Abre o formulario DataJud quando usuario clica em cartao DataJud
+   * AIDEV-NOTE: Abre o dialog DataJud com tela de selecao de tipo
    */
-  const handleDataJudExampleClick = (key: string) => {
-    // Determina o tipo de busca baseado na chave
-    let initialType: 'number' | 'class' | 'party' | 'dateRange' = 'number';
-    if (key === 'dataJudNumero') initialType = 'number';
-    else if (key === 'dataJudMovimentacoes') initialType = 'number'; // Busca por numero primeiro
-    else if (key === 'dataJudParte') initialType = 'party';
-
-    setDataJudInitialType(initialType);
+  const handleDataJudClick = () => {
     setShowDataJudForm(true);
   };
 
   /**
-   * Callback executado quando o formulario DataJud e submetido
+   * AIDEV-NOTE: Callback executado quando a busca DataJud retorna resultados via IPC
+   * AIDEV-WARNING: Recebe dados brutos da API, nao mais prompt
    */
-  const handleDataJudSubmit = (query: { searchType: string; court: string; value: string }) => {
-    // Gera o prompt estruturado e executa a tarefa
-    const promptText = `Buscar processo no DataJud:
-- Tipo: ${query.searchType}
-- Tribunal: ${query.court}
-- Valor: ${query.value}
+  const handleDataJudResult = useCallback((data: any) => {
+    setDataJudResults(data);
+    setShowDataJudResults(true);
+  }, []);
 
-Por favor, execute a busca e retorne os resultados em formato Markdown com os dados dos processos encontrados.`;
-
-    const taskId = `task_${Date.now()}`;
-    startTask({ prompt: promptText, taskId }).then((task) => {
-      if (task) {
-        navigate(`/execution/${task.id}`);
-      }
-    });
-  };
+  /**
+   * AIDEV-NOTE: Fecha resultados e reabre formulario de busca
+   */
+  const handleNewSearch = useCallback(() => {
+    setShowDataJudResults(false);
+    setDataJudResults(null);
+    setShowDataJudForm(true);
+  }, []);
 
   return (
     <>
@@ -193,8 +186,15 @@ Por favor, execute a busca e retorne os resultados em formato Markdown com os da
       <DataJudQueryForm
         open={showDataJudForm}
         onOpenChange={setShowDataJudForm}
-        onSubmit={handleDataJudSubmit}
-        initialSearchType={dataJudInitialType}
+        onResult={handleDataJudResult}
+      />
+
+      {/* AIDEV-NOTE: Dialog de resultados DataJud */}
+      <DataJudResults
+        open={showDataJudResults}
+        onOpenChange={setShowDataJudResults}
+        data={dataJudResults}
+        onNewSearch={handleNewSearch}
       />
 
       <SettingsDialog
@@ -279,10 +279,10 @@ Por favor, execute a busca e retorne os resultados em formato Markdown com os da
                         {/* AIDEV-NOTE: Use cases juridicos traduzidos via namespace 'home' com chave useCases.{key} */}
                         {USE_CASE_KEYS.map((useCase, index) => {
                           const IconComponent = useCase.icon;
-                          // AIDEV-NOTE: Cards DataJud abrem o formulario de busca
-                          const isDataJud = useCase.key.startsWith('dataJud');
+                          // AIDEV-NOTE: Card DataJud abre dialog dedicado
+                          const isDataJud = useCase.key === 'dataJud';
                           const handleClick = isDataJud
-                            ? () => handleDataJudExampleClick(useCase.key)
+                            ? handleDataJudClick
                             : () => handleExampleClick(t(`useCases.${useCase.key}.prompt`));
 
                           return (

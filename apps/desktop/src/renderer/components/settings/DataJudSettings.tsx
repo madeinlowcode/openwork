@@ -8,21 +8,23 @@
  *
  * @dependencies
  * - react-i18next (useTranslation para traducoes 'datajud')
- * - hooks/useDataJud (gerenciamento de estado do DataJud)
  * - components/ui/button (botao de validacao)
  * - components/ui/input (campo de API key)
  * - components/ui/badge (status de conexao)
+ * - window.jurisiar.datajud (IPC handlers para API key)
  *
  * @relatedFiles
  * - locales/pt-BR/datajud.json (traducoes PT)
  * - locales/en/datajud.json (traducoes EN)
  * - components/layout/SettingsDialog.tsx (integra este componente)
+ * - src/main/ipc/datajud-handlers.ts (IPC handlers backend)
+ * - src/preload/index.ts (bridge IPC)
  *
- * AIDEV-WARNING: Requer API do DataJud exposta via window.jurisiar
+ * AIDEV-WARNING: Depende de window.jurisiar.datajud exposto via preload
  * AIDEV-NOTE: Usa namespace 'datajud' para traducoes
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,67 +36,54 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
  */
 export type DataJudStatus = 'disconnected' | 'validating' | 'connected' | 'error';
 
-/**
- * Resposta da validacao de API key
- */
-interface ValidateResult {
-  valid: boolean;
-  error?: string;
-}
-
 interface DataJudSettingsProps {
   /** Callback executado quando a API key e salva com sucesso */
   onSave?: () => void;
 }
 
+// AIDEV-NOTE: URL oficial onde a chave publica do DataJud esta disponivel
+const DATAJUD_KEY_URL = 'https://datajud-wiki.cnj.jus.br/api-publica/acesso';
+
 export function DataJudSettings({ onSave }: DataJudSettingsProps) {
   const { t } = useTranslation('datajud');
 
-  // AIDEV-NOTE: Estado gerenciado localmente ate que IPC handlers estejam implementados
   const [apiKey, setApiKey] = useState('');
   const [status, setStatus] = useState<DataJudStatus>('disconnected');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  /**
-   * Valida a API key chamando o endpoint de validacao
-   */
-  const validateApiKey = useCallback(async (key: string): Promise<ValidateResult> => {
-    // TODO: Substituir por chamada IPC quando TASK-007/TASK-008 estiverem implementados
-    // const result = await window.jurisiar.datajud?.validateKey(key);
+  // AIDEV-NOTE: Carrega estado inicial da API key ao montar o componente
+  useEffect(() => {
+    const loadCurrentKey = async () => {
+      try {
+        const result = await window.jurisiar.datajud.getApiKey();
+        if (result.hasKey) {
+          setApiKey(result.maskedKey || '••••••••');
+          setStatus('connected');
+        }
+      } catch {
+        // Silenciosamente ignora se IPC nao estiver disponivel
+      }
+    };
+    loadCurrentKey();
+  }, []);
 
-    // Simulacao temporaria para desenvolvimento da UI
-    if (key.length < 10) {
-      return { valid: false, error: 'Chave muito curta' };
+  /**
+   * Normaliza a API key removendo prefixo "APIKey " caso o usuario cole da documentacao
+   * AIDEV-NOTE: A documentacao do CNJ mostra "APIKey cDZHYz..." mas o codigo ja adiciona o prefixo
+   */
+  const normalizeApiKey = (key: string): string => {
+    const trimmed = key.trim();
+    // Aceita variações: "APIKey ", "ApiKey ", "apikey " etc.
+    if (/^api\s*key\s+/i.test(trimmed)) {
+      return trimmed.replace(/^api\s*key\s+/i, '');
     }
-
-    // Simular validacao bem-sucedida
-    return { valid: true };
-  }, []);
+    return trimmed;
+  };
 
   /**
-   * Salva a API key no armazenamento seguro
-   */
-  const saveApiKey = useCallback(async (key: string): Promise<boolean> => {
-    // TODO: Substituir por chamada IPC quando TASK-007/TASK-008 estiverem implementados
-    // await window.jurisiar.datajud?.setApiKey(key);
-    console.log('[DataJudSettings] Salvando API key (simulado):', key.substring(0, 4) + '...');
-    return true;
-  }, []);
-
-  /**
-   * Remove a API key do armazenamento
-   */
-  const clearApiKey = useCallback(async (): Promise<void> => {
-    // TODO: Substituir por chamada IPC quando TASK-007/TASK-008 estiverem implementados
-    // await window.jurisiar.datajud?.clearApiKey();
-    setApiKey('');
-    setStatus('disconnected');
-    setError(null);
-  }, []);
-
-  /**
-   * Manipula a validacao e salvamento da API key
+   * Valida e salva a API key via IPC
+   * AIDEV-NOTE: setApiKey no backend ja valida internamente antes de salvar
    */
   const handleValidate = useCallback(async () => {
     if (!apiKey.trim()) {
@@ -106,16 +95,18 @@ export function DataJudSettings({ onSave }: DataJudSettingsProps) {
     setStatus('validating');
     setError(null);
 
-    try {
-      const result = await validateApiKey(apiKey);
+    const cleanKey = normalizeApiKey(apiKey);
 
-      if (result.valid) {
-        await saveApiKey(apiKey);
+    try {
+      // AIDEV-NOTE: setApiKey valida e salva em uma unica operacao
+      const saveResult = await window.jurisiar.datajud.setApiKey(cleanKey);
+      if (saveResult.success) {
+        setApiKey(cleanKey);
         setStatus('connected');
         onSave?.();
       } else {
         setStatus('error');
-        setError(result.error || t('errors.invalidApiKey'));
+        setError(saveResult.error || t('errors.invalidApiKey'));
       }
     } catch {
       setStatus('error');
@@ -123,7 +114,21 @@ export function DataJudSettings({ onSave }: DataJudSettingsProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [apiKey, validateApiKey, saveApiKey, onSave, t]);
+  }, [apiKey, onSave, t]);
+
+  /**
+   * Remove a API key do armazenamento via IPC
+   */
+  const clearApiKey = useCallback(async () => {
+    try {
+      await window.jurisiar.datajud.deleteApiKey();
+    } catch {
+      // Fallback silencioso
+    }
+    setApiKey('');
+    setStatus('disconnected');
+    setError(null);
+  }, []);
 
   /**
    * Renderiza o badge de status
@@ -183,33 +188,42 @@ export function DataJudSettings({ onSave }: DataJudSettingsProps) {
             {t('settings.apiKeyLabel')}
           </label>
           <a
-            href="https://www.cnj.jus.br/sigec/login.php?siglaSistema=SIGEC&siglaModulo=Solicitacao"
+            href={DATAJUD_KEY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+            data-testid="datajud-help-link"
           >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
             {t('settings.help.linkText')}
           </a>
         </div>
 
         <div className="relative">
           <Input
-            type="password"
+            type="text"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              if (status === 'error') setError(null);
+              if (status === 'connected') setStatus('disconnected');
+            }}
             placeholder={t('settings.apiKeyPlaceholder')}
             disabled={isLoading}
             data-testid="datajud-api-key-input"
-            className="w-full"
+            className="w-full font-mono text-sm"
           />
-          {apiKey && (
+          {apiKey && !isLoading && (
             <button
-              onClick={() => setApiKey('')}
+              onClick={clearApiKey}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               type="button"
+              data-testid="datajud-clear-button"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           )}
@@ -228,37 +242,25 @@ export function DataJudSettings({ onSave }: DataJudSettingsProps) {
         </Alert>
       )}
 
-      {/* Botoes de acao */}
-      <div className="flex gap-3">
-        <Button
-          onClick={handleValidate}
-          disabled={isLoading || !apiKey.trim()}
-          className="flex-1"
-          data-testid="datajud-validate-button"
-        >
-          {isLoading ? (
-            <>
-              <svg className="h-4 w-4 mr-2 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" className="opacity-75" />
-              </svg>
-              {t('settings.validatingButton')}
-            </>
-          ) : (
-            t('settings.validateButton')
-          )}
-        </Button>
-
-        {status === 'connected' && (
-          <Button
-            variant="outline"
-            onClick={clearApiKey}
-            data-testid="datajud-clear-button"
-          >
-            {t('settings.clearButton')}
-          </Button>
+      {/* Botao de validacao */}
+      <Button
+        onClick={handleValidate}
+        disabled={isLoading || !apiKey.trim()}
+        className="w-full"
+        data-testid="datajud-validate-button"
+      >
+        {isLoading ? (
+          <>
+            <svg className="h-4 w-4 mr-2 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+              <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" className="opacity-75" />
+            </svg>
+            {t('settings.validatingButton')}
+          </>
+        ) : (
+          t('settings.validateButton')
         )}
-      </div>
+      </Button>
     </div>
   );
 }

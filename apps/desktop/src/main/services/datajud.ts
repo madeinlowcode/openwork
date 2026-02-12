@@ -406,13 +406,7 @@ export function buildSearchQuery(query: DataJudQuery): Record<string, unknown> {
     }
   }
 
-  // Add pagination cursor if provided
-  if (query.searchAfter && query.searchAfter.length > 0) {
-    baseQuery.search_after = query.searchAfter;
-  }
-
-  // Sort by _id for consistent pagination
-  baseQuery.sort = ['_id'];
+  // AIDEV-NOTE: API DataJud não suporta sort nem search_after - fielddata bloqueado no cluster
 
   return baseQuery;
 }
@@ -425,15 +419,15 @@ export function buildSearchQuery(query: DataJudQuery): Record<string, unknown> {
  * @internal - Exported for testing purposes
  */
 export function validateProcessNumber(value: string): { valid: boolean; cleaned?: string; error?: string } {
-  // CNJ process number format: 0000000-00.0000.0.00.0000 (25 digits with separators)
+  // CNJ process number format: NNNNNNN-DD.AAAA.J.TR.OOOO (20 numeric digits)
   // We accept both formatted and unformatted versions
   const cleaned = value.replace(/[^0-9]/g, '');
 
-  if (cleaned.length !== 25) {
+  if (cleaned.length !== 20) {
     return {
       valid: false,
       cleaned,
-      error: `Invalid process number format. Expected 25 digits, got ${cleaned.length}`,
+      error: `Invalid process number format. Expected 20 digits, got ${cleaned.length}`,
     };
   }
 
@@ -470,11 +464,12 @@ export function parseApiResponse(
       grau: (source?.grau as DataJudInstance) || 'G1',
       dataAjuizamento: (source?.dataAjuizamento as string) || '',
       orgaoJulgador: parseOrgaoJulgador(source?.orgaoJulgador as Record<string, unknown>),
-      temas: parseTemas(source?.temas as Array<Record<string, unknown>> | undefined),
+      // AIDEV-NOTE: Campos mapeados conforme resposta real da API DataJud
+      temas: parseTemas((source?.assuntos || source?.temas) as Array<Record<string, unknown>> | undefined),
       partes: parsePartes(source?.partes as Array<Record<string, unknown>> | undefined),
-      movimentacoes: parseMovimentacoes(source?.movimentacoes as Array<Record<string, unknown>> | undefined),
+      movimentacoes: parseMovimentacoes((source?.movimentos || source?.movimentacoes) as Array<Record<string, unknown>> | undefined),
       nivelSigilo: (source?.nivelSigilo as DataJudSigiloLevel) || 0,
-      dataUltimaAtualizacao: (source?.dataUltimaAtualizacao as string) || undefined,
+      dataUltimaAtualizacao: (source?.dataHoraUltimaAtualizacao as string) || (source?.dataUltimaAtualizacao as string) || undefined,
     };
   });
 
@@ -543,10 +538,11 @@ function parsePartes(data: Array<Record<string, unknown>> | undefined): DataJudP
 
 function parseMovimentacoes(data: Array<Record<string, unknown>> | undefined): DataJudMovement[] | undefined {
   if (!data) return undefined;
+  // AIDEV-NOTE: Campos reais da API DataJud: nome, codigo, dataHora, complementosTabelados
   return data.map((m) => ({
-    dataMovimentacao: (m.dataMovimentacao as string) || '',
-    codigoTipoMovimento: (m.codigoTipoMovimento as number) || 0,
-    tipoMovimento: (m.tipoMovimento as string) || '',
+    dataMovimentacao: (m.dataHora as string) || (m.dataMovimentacao as string) || '',
+    codigoTipoMovimento: (m.codigo as number) || (m.codigoTipoMovimento as number) || 0,
+    tipoMovimento: (m.nome as string) || (m.tipoMovimento as string) || '',
     descricaoMovimento: (m.descricaoMovimento as string) || '',
   }));
 }
@@ -705,11 +701,18 @@ export async function search(query: DataJudQuery): Promise<DataJudSearchResult> 
   await waitForRateLimit();
   recordRequest();
 
-  const url = `${DATAJUD_BASE_URL}/${query.court}/_search`;
+  // AIDEV-NOTE: Normaliza court para alias da API (ex: 'tjsp' -> 'api_publica_tjsp')
+  const courtAlias = query.court.startsWith('api_publica_') ? query.court : `api_publica_${query.court}`;
+  const url = `${DATAJUD_BASE_URL}/${courtAlias}/_search`;
   const queryBody = buildSearchQuery(query);
   const timeout = (query.size || 10) > 1000 ? DATAJUD_TIMEOUTS.largeSearch : DATAJUD_TIMEOUTS.search;
 
-  console.log('[DataJud] Executing search:', redactLog(JSON.stringify({ url, queryType: query.queryType, size: query.size })));
+  console.log('[DataJud] ===== REQUEST DEBUG =====');
+  console.log('[DataJud] URL:', url);
+  console.log('[DataJud] Body:', JSON.stringify(queryBody, null, 2));
+  console.log('[DataJud] API Key (first 10 chars):', apiKey.substring(0, 10) + '...');
+  console.log('[DataJud] Query params:', JSON.stringify({ court: query.court, courtAlias, queryType: query.queryType, value: query.value, size: query.size }));
+  console.log('[DataJud] ========================');
 
   let lastError: Error | null = null;
   let delay = DATAJUD_RETRY_CONFIG.initialDelay;
@@ -728,6 +731,13 @@ export async function search(query: DataJudQuery): Promise<DataJudSearchResult> 
       }, timeout);
 
       const durationMs = Date.now() - startTime;
+
+      console.log('[DataJud] ===== RESPONSE DEBUG =====');
+      console.log('[DataJud] Status:', response.status);
+      const responseClone = response.clone();
+      const rawText = await responseClone.text().catch(() => '');
+      console.log('[DataJud] Response (first 500 chars):', rawText.substring(0, 500));
+      console.log('[DataJud] ============================');
 
       // Handle rate limiting
       if (response.status === 429) {

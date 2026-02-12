@@ -6,7 +6,8 @@
     "providers": "Provedores",
     "voice": "Entrada de Voz",
     "fallback": "Fallback",
-    "general": "Geral"
+    "general": "Geral",
+    "datajud": "DataJud"
   },
   "warning": {
     "noProviderReady": "Nenhum provedor pronto",

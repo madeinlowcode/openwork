@@ -4,7 +4,7 @@
   "settings": {
     "title": "DataJud Configuration",
     "apiKeyLabel": "DataJud API Key",
-    "apiKeyPlaceholder": "Enter your DataJud API key",
+    "apiKeyPlaceholder": "Paste the key (e.g.: cDZHYzlZa0JadVRE...)",
     "validateButton": "Validate",
     "validatingButton": "Validating...",
     "clearButton": "Clear",
@@ -19,9 +19,28 @@
       "noKey": "Key not configured"
     },
     "help": {
-      "linkText": "Get API key from CNJ",
-      "description": "You need a DataJud API key to search court cases. The key can be obtained for free from the CNJ portal."
+      "linkText": "Copy API key from CNJ portal",
+      "description": "The DataJud API key is public and available on the CNJ portal. Click the link above to access and copy the key."
     }
+  },
+  "queryTypes": {
+    "number": {
+      "title": "Search by Number (NPU)",
+      "description": "Look up a case by its unique number"
+    },
+    "class": {
+      "title": "Search by Case Class",
+      "description": "Search cases by class or type"
+    },
+    "party": {
+      "title": "Search by Party Name",
+      "description": "Find cases by plaintiff or defendant name"
+    },
+    "dateRange": {
+      "title": "Search by Date Range",
+      "description": "Filter cases by date interval"
+    },
+    "back": "Back"
   },
   "search": {
     "title": "Search Case",
@@ -57,6 +76,8 @@
     "dateTo": "End Date",
     "submit": "Search",
     "loading": "Searching...",
+    "searching": "Searching DataJud API...",
+    "errorMessage": "Search error: {{error}}",
     "cancel": "Cancel"
   },
   "results": {
@@ -64,6 +85,7 @@
     "total": "Total cases found: {{count}}",
     "noResults": "No cases found",
     "noResultsDescription": "Try modifying your search criteria",
+    "newSearch": "New Search",
     "loadMore": "Load More",
     "loading": "Loading results...",
     "processNumber": "Case Number",

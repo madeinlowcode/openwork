@@ -4,7 +4,7 @@
   "settings": {
     "title": "Configuracao do DataJud",
     "apiKeyLabel": "Chave de API do DataJud",
-    "apiKeyPlaceholder": "Digite sua chave de API do DataJud",
+    "apiKeyPlaceholder": "Cole a chave (ex: cDZHYzlZa0JadVRE...)",
     "validateButton": "Validar",
     "validatingButton": "Validando...",
     "clearButton": "Limpar",
@@ -19,9 +19,28 @@
       "noKey": "Chave nao configurada"
     },
     "help": {
-      "linkText": "Obter chave de API no CNJ",
-      "description": "Voce precisa de uma chave de API do DataJud para realizar buscas processuais. A chave pode ser obtida gratuitamente no portal do CNJ."
+      "linkText": "Copiar chave de API no portal CNJ",
+      "description": "A chave de API do DataJud e publica e esta disponivel no portal do CNJ. Clique no link acima para acessar e copiar a chave."
     }
+  },
+  "queryTypes": {
+    "number": {
+      "title": "Buscar por Numero (NPU)",
+      "description": "Consulte um processo pelo numero unico"
+    },
+    "class": {
+      "title": "Buscar por Classe Processual",
+      "description": "Pesquise processos por classe ou tipo"
+    },
+    "party": {
+      "title": "Buscar por Nome da Parte",
+      "description": "Encontre processos pelo nome do autor ou reu"
+    },
+    "dateRange": {
+      "title": "Buscar por Periodo",
+      "description": "Filtre processos por intervalo de datas"
+    },
+    "back": "Voltar"
   },
   "search": {
     "title": "Buscar Processo",
@@ -57,6 +76,8 @@
     "dateTo": "Data Final",
     "submit": "Buscar",
     "loading": "Buscando...",
+    "searching": "Buscando na API DataJud...",
+    "errorMessage": "Erro ao buscar: {{error}}",
     "cancel": "Cancelar"
   },
   "results": {
@@ -64,6 +85,7 @@
     "total": "Total de processos encontrados: {{count}}",
     "noResults": "Nenhum processo encontrado",
     "noResultsDescription": "Tente modificar os criterios de busca",
+    "newSearch": "Nova Busca",
     "loadMore": "Carregar Mais",
     "loading": "Carregando resultados...",
     "processNumber": "Numero do Processo",

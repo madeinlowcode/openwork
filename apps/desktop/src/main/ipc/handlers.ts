@@ -120,6 +120,7 @@ import {
   executeMockTaskFlow,
   detectScenarioFromPrompt,
 } from '../test-utils/mock-task-flow';
+import { registerDataJudHandlers } from './datajud-handlers';
 
 const MAX_TEXT_LENGTH = 8000;
 const ALLOWED_API_KEY_PROVIDERS = new Set(['anthropic', 'openai', 'openrouter', 'google', 'xai', 'deepseek', 'moonshot', 'zai', 'azure-foundry', 'custom', 'bedrock', 'litellm', 'minimax', 'lmstudio', 'elevenlabs']);
@@ -2654,7 +2655,7 @@ export function registerIPCHandlers(): void {
   // AIDEV-NOTE: Register DataJud IPC handlers for API key management, search, and history
   // AIDEV-WARNING: API keys are never exposed via IPC - only masked values are returned
 
-  const { registerDataJudHandlers } = require('./datajud-handlers');
+  // AIDEV-WARNING: Must use static import, not require() - this is an ESM project
   registerDataJudHandlers();
 }
 
