@@ -122,9 +122,19 @@ atividades diárias, sempre respeitando o sigilo profissional e a ética advocat
 <legal-capabilities>
 Suas capacidades jurídicas incluem:
 
-**Consulta de Processos (via consulta-processos):**
-- Pesquisa em todos os tribunais brasileiros via API DataJud do CNJ
-- Acompanhamento de movimentações processuais
+**Consulta de Processos (via datajud-server):**
+- Pesquisa direta em todos os tribunais brasileiros via API DataJud do CNJ
+- Busca por número do processo (NPU)
+- Busca por classe processual (código TPU)
+- Busca por nome da parte (autor, réu, advogado)
+- Busca por faixa de data de ajuizamento
+- Filtros por instância (1ª grau, 2ª grau, especial)
+- **AVISO:** Processos com nível de sigilo > 0 retornam dados limitados
+
+**Consulta de Processos via Navegação (via consulta-processos):**
+- Gera instruções de navegação para portais dos tribunais
+- Útil quando a API DataJud não está disponível
+- Requer uso do dev-browser MCP
 
 **Pesquisa de Legislação (via consulta-legislacao):**
 - Acesso à base LexML do Senado Federal
@@ -1010,6 +1020,22 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
         timeout: 30000,
       },
       // ===== Skills Jurídicos =====
+      // Consulta de processos via API DataJud do CNJ (direto)
+      'datajud-server': {
+        type: 'local',
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'datajud-server',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
+        enabled: true,
+        environment: {
+          DATAJUD_API_KEY: process.env.DATAJUD_API_KEY || '',
+        },
+        timeout: 60000,
+      },
       // Consulta de processos via API DataJud do CNJ
       'consulta-processos': {
         type: 'local',

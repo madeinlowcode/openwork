@@ -49,6 +49,11 @@ export default defineConfig({
       retries: 0,
     },
     {
+      name: 'electron-datajud',
+      testMatch: '**/datajud.spec.ts',
+      timeout: 90000,
+    },
+    {
       name: 'electron-edge-client',
       testMatch: '**/edge-client.spec.ts',
       timeout: 90000,

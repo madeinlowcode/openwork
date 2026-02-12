@@ -1,0 +1,136 @@
+{
+  "title": "DataJud - Busca Processual",
+  "description": "Configure a API do DataJud para buscar processos judiciais no sistema CNJ",
+  "settings": {
+    "title": "Configuracao do DataJud",
+    "apiKeyLabel": "Chave de API do DataJud",
+    "apiKeyPlaceholder": "Digite sua chave de API do DataJud",
+    "validateButton": "Validar",
+    "validatingButton": "Validando...",
+    "clearButton": "Limpar",
+    "clearHistoryTitle": "Limpar Historico",
+    "clearHistoryDescription": "Tem certeza que deseja limpar todo o historico de buscas? Esta acao nao pode ser desfeita.",
+    "clearHistoryConfirm": "Limpar",
+    "status": {
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "validating": "Validando...",
+      "error": "Erro de conexao",
+      "noKey": "Chave nao configurada"
+    },
+    "help": {
+      "linkText": "Obter chave de API no CNJ",
+      "description": "Voce precisa de uma chave de API do DataJud para realizar buscas processuais. A chave pode ser obtida gratuitamente no portal do CNJ."
+    }
+  },
+  "search": {
+    "title": "Buscar Processo",
+    "searchType": {
+      "label": "Tipo de Busca",
+      "placeholder": "Selecione o tipo de busca",
+      "number": "Por Numero (NPU)",
+      "class": "Por Classe",
+      "party": "Por Parte",
+      "dateRange": "Por Intervalo de Datas"
+    },
+    "court": {
+      "label": "Tribunal",
+      "placeholder": "Selecione o tribunal",
+      "all": "Todos os Tribunais"
+    },
+    "instance": {
+      "label": "Grau",
+      "placeholder": "Selecione o grau",
+      "g1": "Primeiro Grau",
+      "g2": "Segundo Grau",
+      "je": "Julgado"
+    },
+    "value": {
+      "label": "Valor da Busca",
+      "placeholder": "Digite o valor para busca",
+      "hintNumber": "Ex: 1000000-00.2024.8.26.0100",
+      "hintClass": "Ex: Procedimento Comum Civel",
+      "hintParty": "Ex: Nome da parte (autor ou reu)",
+      "hintDate": "Ex: 01/01/2024 a 31/12/2024"
+    },
+    "dateFrom": "Data Inicial",
+    "dateTo": "Data Final",
+    "submit": "Buscar",
+    "loading": "Buscando...",
+    "cancel": "Cancelar"
+  },
+  "results": {
+    "title": "Resultados da Busca",
+    "total": "Total de processos encontrados: {{count}}",
+    "noResults": "Nenhum processo encontrado",
+    "noResultsDescription": "Tente modificar os criterios de busca",
+    "loadMore": "Carregar Mais",
+    "loading": "Carregando resultados...",
+    "processNumber": "Numero do Processo",
+    "class": "Classe",
+    "court": "Tribunal",
+    "date": "Data de Autuacao",
+    "instance": "Grau",
+    "parties": {
+      "title": "Partes",
+      "author": "Autor",
+      "defendant": "Reu",
+      "other": "Outro",
+      "unknown": "Nao informado"
+    },
+    "movements": {
+      "title": "Movimentacoes",
+      "showMore": "Ver mais movimentacoes",
+      "showLess": "Ver menos",
+      "loading": "Carregando movimentacoes...",
+      "noMovements": "Nenhuma movimentacao"
+    },
+    "actions": {
+      "copy": "Copiar Numero",
+      "copied": "Copiado!",
+      "openBrowser": "Abrir no PJe",
+      "details": "Ver Detalhes",
+      "hideDetails": "Ocultar Detalhes"
+    },
+    "sigilo": {
+      "warning": "Processo com Sigilo",
+      "description": "Este processo possui sigilo judicial. Algumas informacoes estao ocultas.",
+      "partsHidden": "Partes ocultas",
+      "movementsHidden": "Movimentacoes ocultas"
+    }
+  },
+  "courts": {
+    "superior": "Tribunais Superiores",
+    "stj": "Superior Tribunal de Justica (STJ)",
+    "tst": "Tribunal Superior do Trabalho (TST)",
+    "tse": "Tribunal Superior Eleitoral (TSE)",
+    "stm": "Tribunal Superior Militar (STM)",
+    "federal": "Tribunais Federais",
+    "trf1": "TRF1 - Tribunal Regional Federal 1a Regiao",
+    "trf2": "TRF2 - Tribunal Regional Federal 2a Regiao",
+    "trf3": "TRF3 - Tribunal Regional Federal 3a Regiao",
+    "trf4": "TRF4 - Tribunal Regional Federal 4a Regiao",
+    "trf5": "TRF5 - Tribunal Regional Federal 5a Regiao",
+    "state": "Tribunais de Justica",
+    "tjsp": "TJSP - Tribunal de Justica de Sao Paulo",
+    "tjrj": "TJRJ - Tribunal de Justica do Rio de Janeiro",
+    "tjmg": "TJMG - Tribunal de Justica de Minas Gerais",
+    "labor": "Tribunais do Trabalho",
+    "trt1": "TRT1 - Tribunal Regional do Trabalho 1a Regiao (RJ)",
+    "trt2": "TRT2 - Tribunal Regional do Trabalho 2a Regiao (SP)",
+    "trt3": "TRT3 - Tribunal Regional do Trabalho 3a Regiao (MG)",
+    "trt4": "TRT4 - Tribunal Regional do Trabalho 4a Regiao (RS)",
+    "electoral": "Tribunais Eleitorais",
+    "military": "Tribunais Militares"
+  },
+  "errors": {
+    "invalidApiKey": "Chave de API invalida. Por favor, verifique e tente novamente.",
+    "network": "Erro de conexao. Por favor, verifique sua internet e tente novamente.",
+    "rateLimit": "Limite de requisicoes excedido. Por favor, aguarde alguns segundos e tente novamente.",
+    "noApiKey": "Por favor, configure sua chave de API do DataJud nas configuracoes.",
+    "searchFailed": "Falha na busca. Por favor, tente novamente.",
+    "timeout": "A busca demorou muito. Tente com criterios mais especificos.",
+    "serverError": "Erro no servidor. Por favor, tente novamente mais tarde.",
+    "unknown": "Ocorreu um erro inesperado. Por favor, tente novamente."
+  }
+}

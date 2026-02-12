@@ -47,6 +47,21 @@
       "title": "Extract Clauses",
       "description": "List contract clauses by keywords.",
       "prompt": "Extract termination and penalty clauses from the contract and summarize key points."
+    },
+    "dataJudNumero": {
+      "title": "Search Case by NPU",
+      "description": "Search a court case by NPU number.",
+      "prompt": "Search for case 1000000-00.2024.8.26.0100 at TJSP and show complete details including parties and movements."
+    },
+    "dataJudMovimentacoes": {
+      "title": "View Case Movements",
+      "description": "View all movements of a court case.",
+      "prompt": "List all movements for case 0000000-00.2024.5.0000 ordered by date, highlighting the most recent."
+    },
+    "dataJudParte": {
+      "title": "Search by Party",
+      "description": "Search cases by party name.",
+      "prompt": "Search for cases where 'Party Name' appears as plaintiff at TJSP in the last month."
     }
   }
 }

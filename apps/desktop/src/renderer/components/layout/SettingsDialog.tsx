@@ -40,6 +40,7 @@ import { ProviderSettingsPanel } from '@/components/settings/ProviderSettingsPan
 import { SpeechSettingsForm } from '@/components/settings/SpeechSettingsForm';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { FallbackSettings } from '@/components/settings/FallbackSettings';
+import { DataJudSettings } from '@/components/settings/DataJudSettings';
 
 // First 4 providers shown in collapsed view (matches PROVIDER_ORDER in ProviderGrid)
 const FIRST_FOUR_PROVIDERS: ProviderId[] = ['openai', 'anthropic', 'google', 'bedrock'];
@@ -50,9 +51,9 @@ interface SettingsDialogProps {
   onApiKeySaved?: () => void;
   initialProvider?: ProviderId;
   /**
-   * Initial tab to show when dialog opens ('providers' or 'voice')
+   * Initial tab to show when dialog opens ('providers', 'voice', or 'datajud')
    */
-  initialTab?: 'providers' | 'voice';
+  initialTab?: 'providers' | 'voice' | 'fallback' | 'general' | 'datajud';
 }
 
 export default function SettingsDialog({
@@ -63,7 +64,7 @@ export default function SettingsDialog({
   initialTab = 'providers',
 }: SettingsDialogProps) {
   // AIDEV-NOTE: Tipos de tabs disponiveis no dialog
-  type TabType = 'providers' | 'voice' | 'fallback' | 'general';
+  type TabType = 'providers' | 'voice' | 'fallback' | 'general' | 'datajud';
   // AIDEV-NOTE: Usa namespace 'settings' para traducoes do dialog
   const { t } = useTranslation('settings');
 
@@ -356,6 +357,17 @@ export default function SettingsDialog({
             >
               {t('tabs.general')}
             </button>
+            <button
+              onClick={() => setActiveTab('datajud')}
+              className={`pb-3 px-1 font-medium text-sm transition-colors ${
+                activeTab === 'datajud'
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              data-testid="settings-tab-datajud"
+            >
+              {t('tabs.datajud')}
+            </button>
           </div>
 
           {/* Providers Tab */}
@@ -596,6 +608,17 @@ export default function SettingsDialog({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* DataJud Tab */}
+          {activeTab === 'datajud' && (
+            <div className="space-y-6">
+              <DataJudSettings
+                onSave={() => {
+                  // Callback opcional quando a API key e salva
+                }}
+              />
             </div>
           )}
 

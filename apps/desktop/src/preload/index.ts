@@ -472,6 +472,134 @@ const jurisiarAPI = {
     hasToken: (): Promise<boolean> =>
       ipcRenderer.invoke('auth:has-token'),
   },
+
+  // ============================================================================
+  // DataJud API
+  // ============================================================================
+  // AIDEV-NOTE: Exposes DataJud API methods to renderer for judiciary search
+  // AIDEV-WARNING: API keys are never exposed - only masked values returned
+
+  datajud: {
+    /** Check if DataJud API key is configured */
+    isConfigured: (): Promise<boolean> =>
+      ipcRenderer.invoke('datajud:is-configured'),
+
+    /** Set DataJud API key (validates before storing) */
+    setApiKey: (apiKey: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('datajud:set-api-key', apiKey),
+
+    /** Get masked API key status */
+    getApiKey: (): Promise<{ hasKey: boolean; maskedKey?: string }> =>
+      ipcRenderer.invoke('datajud:get-api-key'),
+
+    /** Delete stored API key */
+    deleteApiKey: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('datajud:delete-api-key'),
+
+    /** Validate API key (optionally with provided key) */
+    validateKey: (apiKey?: string): Promise<{ valid: boolean; error?: string }> =>
+      ipcRenderer.invoke('datajud:validate-key', apiKey),
+
+    /** Get all available courts */
+    getCourts: (): Promise<Array<{
+      alias: string;
+      name: string;
+      category: string;
+      state?: string;
+      isActive: boolean;
+    }>> => ipcRenderer.invoke('datajud:get-courts'),
+
+    /** Get court by alias */
+    getCourt: (alias: string): Promise<{
+      alias: string;
+      name: string;
+      category: string;
+      state?: string;
+      isActive: boolean;
+    } | null> => ipcRenderer.invoke('datajud:get-court', alias),
+
+    /** Get courts by category */
+    getCourtsByCategory: (category: string): Promise<Array<{
+      alias: string;
+      name: string;
+      category: string;
+      state?: string;
+      isActive: boolean;
+    }>> => ipcRenderer.invoke('datajud:get-courts-by-category', category),
+
+    /** Perform general search */
+    search: (query: {
+      court: string;
+      queryType: string;
+      value: string;
+      size?: number;
+      filters?: {
+        dateFrom?: string;
+        dateTo?: string;
+        instance?: string;
+        courtFilter?: string;
+      };
+    }): Promise<{ success: boolean; result?: unknown; error?: string }> =>
+      ipcRenderer.invoke('datajud:search', query),
+
+    /** Search by process number */
+    searchByNumber: (court: string, processNumber: string, options?: { size?: number }): Promise<{
+      success: boolean;
+      result?: unknown;
+      error?: string;
+    }> => ipcRenderer.invoke('datajud:search-by-number', court, processNumber, options),
+
+    /** Search by procedural class */
+    searchByClass: (court: string, classCode: string, options?: {
+      size?: number;
+      dateFrom?: string;
+      dateTo?: string;
+      instance?: string;
+    }): Promise<{ success: boolean; result?: unknown; error?: string }> =>
+      ipcRenderer.invoke('datajud:search-by-class', court, classCode, options),
+
+    /** Search by party name */
+    searchByParty: (court: string, partyName: string, options?: { size?: number }): Promise<{
+      success: boolean;
+      result?: unknown;
+      error?: string;
+    }> => ipcRenderer.invoke('datajud:search-by-party', court, partyName, options),
+
+    /** Search by date range */
+    searchByDateRange: (court: string, dateFrom: string, dateTo: string, options?: {
+      size?: number;
+      instance?: string;
+    }): Promise<{ success: boolean; result?: unknown; error?: string }> =>
+      ipcRenderer.invoke('datajud:search-by-date-range', court, dateFrom, dateTo, options),
+
+    /** Get search history */
+    getHistory: (limit?: number): Promise<Array<{
+      id: number;
+      court: string;
+      queryType: string;
+      queryValue: string;
+      resultCount: number;
+      createdAt: number;
+    }>> => ipcRenderer.invoke('datajud:get-history', limit),
+
+    /** Delete a history item */
+    deleteHistoryItem: (id: number): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('datajud:delete-history-item', id),
+
+    /** Clear all search history */
+    clearHistory: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('datajud:clear-history'),
+
+    /** Get history statistics */
+    getHistoryStats: (): Promise<{
+      totalSearches: number;
+      searchesByCourt: Array<{ court: string; count: number }>;
+    } | null> => ipcRenderer.invoke('datajud:get-history-stats'),
+
+    /** Clear search cache */
+    clearCache: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('datajud:clear-cache'),
+  },
 };
 
 // Expose the API to the renderer

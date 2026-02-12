@@ -2647,6 +2647,15 @@ export function registerIPCHandlers(): void {
     const { hasAuthToken } = await import('../store/secureStorage');
     return hasAuthToken();
   });
+
+  // ============================================================================
+  // DataJud Handlers
+  // ============================================================================
+  // AIDEV-NOTE: Register DataJud IPC handlers for API key management, search, and history
+  // AIDEV-WARNING: API keys are never exposed via IPC - only masked values are returned
+
+  const { registerDataJudHandlers } = require('./datajud-handlers');
+  registerDataJudHandlers();
 }
 
 function createTaskId(): string {

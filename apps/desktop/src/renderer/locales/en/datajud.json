@@ -1,0 +1,136 @@
+{
+  "title": "DataJud - Court Search",
+  "description": "Configure the DataJud API to search court cases in the CNJ system",
+  "settings": {
+    "title": "DataJud Configuration",
+    "apiKeyLabel": "DataJud API Key",
+    "apiKeyPlaceholder": "Enter your DataJud API key",
+    "validateButton": "Validate",
+    "validatingButton": "Validating...",
+    "clearButton": "Clear",
+    "clearHistoryTitle": "Clear History",
+    "clearHistoryDescription": "Are you sure you want to clear all search history? This action cannot be undone.",
+    "clearHistoryConfirm": "Clear",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "validating": "Validating...",
+      "error": "Connection error",
+      "noKey": "Key not configured"
+    },
+    "help": {
+      "linkText": "Get API key from CNJ",
+      "description": "You need a DataJud API key to search court cases. The key can be obtained for free from the CNJ portal."
+    }
+  },
+  "search": {
+    "title": "Search Case",
+    "searchType": {
+      "label": "Search Type",
+      "placeholder": "Select search type",
+      "number": "By Case Number (NPU)",
+      "class": "By Class",
+      "party": "By Party",
+      "dateRange": "By Date Range"
+    },
+    "court": {
+      "label": "Court",
+      "placeholder": "Select court",
+      "all": "All Courts"
+    },
+    "instance": {
+      "label": "Instance",
+      "placeholder": "Select instance",
+      "g1": "First Instance",
+      "g2": "Second Instance",
+      "je": "Appeals"
+    },
+    "value": {
+      "label": "Search Value",
+      "placeholder": "Enter search value",
+      "hintNumber": "Ex: 1000000-00.2024.8.26.0100",
+      "hintClass": "Ex: Civil Procedure",
+      "hintParty": "Ex: Party name (plaintiff or defendant)",
+      "hintDate": "Ex: 01/01/2024 to 12/31/2024"
+    },
+    "dateFrom": "Start Date",
+    "dateTo": "End Date",
+    "submit": "Search",
+    "loading": "Searching...",
+    "cancel": "Cancel"
+  },
+  "results": {
+    "title": "Search Results",
+    "total": "Total cases found: {{count}}",
+    "noResults": "No cases found",
+    "noResultsDescription": "Try modifying your search criteria",
+    "loadMore": "Load More",
+    "loading": "Loading results...",
+    "processNumber": "Case Number",
+    "class": "Class",
+    "court": "Court",
+    "date": "Filing Date",
+    "instance": "Instance",
+    "parties": {
+      "title": "Parties",
+      "author": "Plaintiff",
+      "defendant": "Defendant",
+      "other": "Other",
+      "unknown": "Not informed"
+    },
+    "movements": {
+      "title": "Movements",
+      "showMore": "Show more movements",
+      "showLess": "Show less",
+      "loading": "Loading movements...",
+      "noMovements": "No movements"
+    },
+    "actions": {
+      "copy": "Copy Number",
+      "copied": "Copied!",
+      "openBrowser": "Open in PJE",
+      "details": "View Details",
+      "hideDetails": "Hide Details"
+    },
+    "sigilo": {
+      "warning": "Confidential Case",
+      "description": "This case has court confidentiality. Some information is hidden.",
+      "partsHidden": "Parties hidden",
+      "movementsHidden": "Movements hidden"
+    }
+  },
+  "courts": {
+    "superior": "Superior Courts",
+    "stj": "Superior Court of Justice (STJ)",
+    "tst": "Superior Labor Court (TST)",
+    "tse": "Superior Electoral Court (TSE)",
+    "stm": "Superior Military Court (STM)",
+    "federal": "Federal Courts",
+    "trf1": "TRF1 - Federal Regional Court 1st Region",
+    "trf2": "TRF2 - Federal Regional Court 2nd Region",
+    "trf3": "TRF3 - Federal Regional Court 3rd Region",
+    "trf4": "TRF4 - Federal Regional Court 4th Region",
+    "trf5": "TRF5 - Federal Regional Court 5th Region",
+    "state": "State Courts of Justice",
+    "tjsp": "TJSP - Court of Justice of Sao Paulo",
+    "tjrj": "TJRJ - Court of Justice of Rio de Janeiro",
+    "tjmg": "TJMG - Court of Justice of Minas Gerais",
+    "labor": "Labor Courts",
+    "trt1": "TRT1 - Regional Labor Court 1st Region (RJ)",
+    "trt2": "TRT2 - Regional Labor Court 2nd Region (SP)",
+    "trt3": "TRT3 - Regional Labor Court 3rd Region (MG)",
+    "trt4": "TRT4 - Regional Labor Court 4th Region (RS)",
+    "electoral": "Electoral Courts",
+    "military": "Military Courts"
+  },
+  "errors": {
+    "invalidApiKey": "Invalid API key. Please check and try again.",
+    "network": "Connection error. Please check your internet connection and try again.",
+    "rateLimit": "Rate limit exceeded. Please wait a few seconds and try again.",
+    "noApiKey": "Please configure your DataJud API key in settings.",
+    "searchFailed": "Search failed. Please try again.",
+    "timeout": "Search timed out. Try more specific criteria.",
+    "serverError": "Server error. Please try again later.",
+    "unknown": "An unexpected error occurred. Please try again."
+  }
+}

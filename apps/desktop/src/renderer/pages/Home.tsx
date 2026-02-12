@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import TaskInputBar from '../components/landing/TaskInputBar';
 import SettingsDialog from '../components/layout/SettingsDialog';
+import { DataJudQueryForm } from '../components/datajud';
 import { useTaskStore } from '../stores/taskStore';
 import { getJurisiar } from '../lib/jurisiar';
 import { springs, staggerContainer, staggerItem } from '../lib/animations';
@@ -41,6 +42,9 @@ import {
   MapPin,
   FileSearch,
   FileOutput,
+  Archive,
+  History,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { hasAnyReadyProvider } from '@accomplish/shared';
@@ -62,6 +66,10 @@ const USE_CASE_KEYS: ReadonlyArray<{ key: string; icon: LucideIcon }> = [
   { key: 'consultarCep', icon: MapPin },
   { key: 'analisarPeca', icon: FileSearch },
   { key: 'extrairClausulas', icon: FileOutput },
+  // DataJud use cases
+  { key: 'dataJudNumero', icon: Archive },
+  { key: 'dataJudMovimentacoes', icon: History },
+  { key: 'dataJudParte', icon: Users },
 ];
 
 export default function HomePage() {
@@ -69,7 +77,10 @@ export default function HomePage() {
   const [prompt, setPrompt] = useState('');
   const [showExamples, setShowExamples] = useState(true);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<'providers' | 'voice'>('providers');
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'providers' | 'voice' | 'datajud'>('providers');
+  // AIDEV-NOTE: Estado para o modal do formulario DataJud
+  const [showDataJudForm, setShowDataJudForm] = useState(false);
+  const [dataJudInitialType, setDataJudInitialType] = useState<'number' | 'class' | 'party' | 'dateRange'>('number');
   const { startTask, isLoading, addTaskUpdate, setPermissionRequest } = useTaskStore();
   const navigate = useNavigate();
   const jurisiar = getJurisiar();
@@ -142,8 +153,50 @@ export default function HomePage() {
     setPrompt(examplePrompt);
   };
 
+  /**
+   * AIDEV-NODE: Abre o formulario DataJud quando usuario clica em cartao DataJud
+   */
+  const handleDataJudExampleClick = (key: string) => {
+    // Determina o tipo de busca baseado na chave
+    let initialType: 'number' | 'class' | 'party' | 'dateRange' = 'number';
+    if (key === 'dataJudNumero') initialType = 'number';
+    else if (key === 'dataJudMovimentacoes') initialType = 'number'; // Busca por numero primeiro
+    else if (key === 'dataJudParte') initialType = 'party';
+
+    setDataJudInitialType(initialType);
+    setShowDataJudForm(true);
+  };
+
+  /**
+   * Callback executado quando o formulario DataJud e submetido
+   */
+  const handleDataJudSubmit = (query: { searchType: string; court: string; value: string }) => {
+    // Gera o prompt estruturado e executa a tarefa
+    const promptText = `Buscar processo no DataJud:
+- Tipo: ${query.searchType}
+- Tribunal: ${query.court}
+- Valor: ${query.value}
+
+Por favor, execute a busca e retorne os resultados em formato Markdown com os dados dos processos encontrados.`;
+
+    const taskId = `task_${Date.now()}`;
+    startTask({ prompt: promptText, taskId }).then((task) => {
+      if (task) {
+        navigate(`/execution/${task.id}`);
+      }
+    });
+  };
+
   return (
     <>
+      {/* AIDEV-NOTE: Dialog do formulario DataJud */}
+      <DataJudQueryForm
+        open={showDataJudForm}
+        onOpenChange={setShowDataJudForm}
+        onSubmit={handleDataJudSubmit}
+        initialSearchType={dataJudInitialType}
+      />
+
       <SettingsDialog
         open={showSettingsDialog}
         onOpenChange={handleSettingsDialogChange}
@@ -226,6 +279,12 @@ export default function HomePage() {
                         {/* AIDEV-NOTE: Use cases juridicos traduzidos via namespace 'home' com chave useCases.{key} */}
                         {USE_CASE_KEYS.map((useCase, index) => {
                           const IconComponent = useCase.icon;
+                          // AIDEV-NOTE: Cards DataJud abrem o formulario de busca
+                          const isDataJud = useCase.key.startsWith('dataJud');
+                          const handleClick = isDataJud
+                            ? () => handleDataJudExampleClick(useCase.key)
+                            : () => handleExampleClick(t(`useCases.${useCase.key}.prompt`));
+
                           return (
                             <motion.button
                               key={useCase.key}
@@ -234,7 +293,7 @@ export default function HomePage() {
                               transition={springs.gentle}
                               whileHover={{ scale: 1.03, transition: { duration: 0.15 } }}
                               whileTap={{ scale: 0.97 }}
-                              onClick={() => handleExampleClick(t(`useCases.${useCase.key}.prompt`))}
+                              onClick={handleClick}
                               className="flex flex-col items-center gap-2 p-3 rounded-lg border border-border bg-card hover:border-ring hover:bg-muted/50"
                             >
                               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">

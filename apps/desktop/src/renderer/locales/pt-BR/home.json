@@ -47,6 +47,21 @@
       "title": "Extrair Clausulas",
       "description": "Liste clausulas de contratos por palavras-chave.",
       "prompt": "Extraia as clausulas de rescisao e multa do contrato e resuma os pontos importantes."
+    },
+    "dataJudNumero": {
+      "title": "Buscar Processo por NPU",
+      "description": "Consulte um processo judicial pelo numero NPU.",
+      "prompt": "Busque o processo 1000000-00.2024.8.26.0100 no TJSP e mostre os detalhes completos incluindo partes e movimentacoes."
+    },
+    "dataJudMovimentacoes": {
+      "title": "Consultar Movimentacoes",
+      "description": "Consulte as movimentacoes de um processo.",
+      "prompt": "Liste todas as movimentacoes do processo 0000000-00.2024.5.0000 ordenadas por data, destacando as mais recentes."
+    },
+    "dataJudParte": {
+      "title": "Pesquisar por Parte",
+      "description": "Busque processos pelo nome da parte.",
+      "prompt": "Busque processos onde 'Nome da Parte' apareca como autor no TJSP no ultimo mes."
     }
   }
 }

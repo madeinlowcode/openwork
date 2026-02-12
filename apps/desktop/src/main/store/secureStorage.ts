@@ -188,13 +188,13 @@ export function deleteApiKey(provider: string): boolean {
 /**
  * Supported API key providers
  */
-export type ApiKeyProvider = 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'moonshot' | 'zai' | 'custom' | 'bedrock' | 'litellm' | 'minimax';
+export type ApiKeyProvider = 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'moonshot' | 'zai' | 'custom' | 'bedrock' | 'litellm' | 'minimax' | 'datajud';
 
 /**
  * Get all API keys for all providers
  */
 export async function getAllApiKeys(): Promise<Record<ApiKeyProvider, string | null>> {
-  const [anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax] = await Promise.all([
+  const [anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax, datajud] = await Promise.all([
     getApiKey('anthropic'),
     getApiKey('openai'),
     getApiKey('openrouter'),
@@ -207,9 +207,10 @@ export async function getAllApiKeys(): Promise<Record<ApiKeyProvider, string | n
     getApiKey('bedrock'),
     getApiKey('litellm'),
     getApiKey('minimax'),
+    getApiKey('datajud'),
   ]);
 
-  return { anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax };
+  return { anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax, datajud };
 }
 
 /**
@@ -359,4 +360,53 @@ export function hasAuthToken(): boolean {
   const store = getSecureStore();
   const values = store.get('values');
   return AUTH_TOKEN_KEY in values;
+}
+
+// =============================================================================
+// DataJud API Key Storage
+// =============================================================================
+// AIDEV-NOTE: Metodos para armazenar/recuperar chave da API DataJud (CNJ)
+// AIDEV-WARNING: A chave da API DataJud e armazenada de forma segura via AES-256-GCM
+
+const DATAJUD_API_KEY = 'apiKey:datajud';
+
+/**
+ * Armazena a chave da API DataJud de forma segura
+ *
+ * @param apiKey - Chave da API DataJud a ser armazenada
+ *
+ * 🔒 AIDEV-SECURITY: A chave e criptografada antes de ser armazenada
+ * ⚠️ AIDEV-NOTE: Validar a chave com a API antes de armazenar
+ */
+export function setDataJudApiKey(apiKey: string): void {
+  storeApiKey(DATAJUD_API_KEY, apiKey);
+}
+
+/**
+ * Recupera a chave da API DataJud armazenada
+ *
+ * @returns Chave da API ou null se nao existir
+ *
+ * 🔒 AIDEV-SECURITY: A chave retornada e descriptografada, mas nunca logada
+ */
+export function getDataJudApiKey(): string | null {
+  return getApiKey(DATAJUD_API_KEY);
+}
+
+/**
+ * Remove a chave da API DataJud armazenada
+ *
+ * @returns true se a chave foi removida, false se nao existia
+ */
+export function deleteDataJudApiKey(): boolean {
+  return deleteApiKey(DATAJUD_API_KEY);
+}
+
+/**
+ * Verifica se existe chave da API DataJud armazenada
+ *
+ * @returns true se existe chave armazenada
+ */
+export function hasDataJudApiKey(): boolean {
+  return getDataJudApiKey() !== null;
 }
