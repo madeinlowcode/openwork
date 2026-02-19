@@ -31,7 +31,7 @@ interface TokenSummary {
   stepCount: number;
 }
 
-const TERMINAL_STATUSES: TaskStatus[] = ['completed', 'failed', 'cancelled'];
+const TERMINAL_STATUSES: TaskStatus[] = ['completed', 'failed', 'cancelled', 'interrupted'];
 
 export function useTaskTokenUsage(taskId: string | null, status: TaskStatus | null) {
   const [summary, setSummary] = useState<TokenSummary | null>(null);

@@ -1019,6 +1019,14 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
       this.ptyProcess = null;
     }
 
+    // ================================================================
+    // TOKEN TRACKING: Persist partial tokens BEFORE clearing taskId
+    // ================================================================
+    // AIDEV-WARNING: Must persist BEFORE clearing currentTaskId — otherwise saves with null taskId
+    if (!this.tokenAccumulator.isEmpty()) {
+      this.persistTokenData();
+    }
+
     // Clear state
     this.currentSessionId = null;
     this.currentTaskId = null;
@@ -1046,12 +1054,6 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
 
     // ================================================================
     // TOKEN TRACKING: Persist partial tokens on dispose if any
-    // ================================================================
-    // AIDEV-NOTE: Non-fatal — best-effort persistence before cleanup
-    if (!this.tokenAccumulator.isEmpty()) {
-      this.persistTokenData();
-    }
-
     // ================================================================
     // FALLBACK SYSTEM: Dispose FallbackEngine
     // ================================================================
@@ -1780,8 +1782,9 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     // ================================================================
     // TOKEN TRACKING: Attempt to enrich from CLI storage and persist
     // ================================================================
-    // AIDEV-NOTE: Only on clean exit (code 0) without pending fallback restart
-    if (code === 0 && !this.pendingFallbackRestart) {
+    // AIDEV-NOTE: Run enrichment on code=0, OR when task already completed via step_finish
+    // (Windows PTY kills with code=-1073741510 after task completion — still need to persist)
+    if ((code === 0 || this.hasCompleted) && !this.pendingFallbackRestart) {
       this.enrichAndPersistTokens().catch((err) => {
         console.warn('[OpenCode Adapter] Token enrichment/persistence failed:', err);
         // Non-fatal: still persist what we have from stream
