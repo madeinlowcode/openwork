@@ -25,9 +25,10 @@
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '../stores/taskStore';
-import { getJurisiar } from '../lib/jurisiar';
+import { getJurisiar } from '@/lib/jurisiar';
 import { springs } from '../lib/animations';
 import type { TaskMessage } from '@accomplish/shared';
 import { hasAnyReadyProvider } from '@accomplish/shared';
@@ -46,6 +47,7 @@ import { BrowserScriptCard } from '../components/BrowserScriptCard';
 import loadingSymbol from '/assets/loading-symbol.svg';
 import SettingsDialog from '../components/layout/SettingsDialog';
 import { TodoSidebar } from '../components/TodoSidebar';
+import { TaskCostBanner } from '@/components/TaskCostBanner';
 import { useSpeechInput } from '../hooks/useSpeechInput';
 import { SpeechInputButton } from '../components/ui/SpeechInputButton';
 
@@ -167,6 +169,35 @@ function getToolNameForTranslation(toolName: string): string {
     return toolName;
   }
   return getBaseToolName(toolName);
+}
+
+/**
+ * Formata nome de ferramenta MCP dinamica para exibicao quando nao ha traducao
+ * Ex: "consulta-legislacao_pesquisar_lei" -> "Consulta Legislacao Pesquisar Lei"
+ */
+function formatToolName(toolName: string): string {
+  return toolName
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+const loggedMissingToolTranslationKeys = new Set<string>();
+
+function getToolLabel(toolName: string, t?: (key: string) => string): string {
+  const key = `tools:${getToolNameForTranslation(toolName)}`;
+  const keyExists = i18next.exists(key);
+  if (!keyExists && !loggedMissingToolTranslationKeys.has(key)) {
+    loggedMissingToolTranslationKeys.add(key);
+    if (import.meta.env.DEV) {
+      console.debug('[Execution] Missing tool translation key; using fallback label', {
+        toolName,
+        key,
+        tool_translation_key_exists: false,
+      });
+    }
+  }
+  return keyExists && t ? t(key) : formatToolName(toolName);
 }
 
 
@@ -866,7 +897,7 @@ export default function ExecutionPage() {
                       <SpinningIcon className="h-4 w-4" />
                       <span className="text-sm">
                         {currentTool
-                          ? ((currentToolInput as { description?: string })?.description || t(`tools:${getToolNameForTranslation(currentTool)}`, currentTool))
+                          ? ((currentToolInput as { description?: string })?.description || getToolLabel(currentTool, t))
                           : (startupStageTaskId === id && startupStage)
                             ? startupStage.message
                             : t('execution:thinking')}
@@ -1204,6 +1235,11 @@ export default function ExecutionPage() {
         )}
       </AnimatePresence>
 
+      {/* Token usage banner — shown when task reaches terminal status */}
+      {isComplete && currentTask.id && (
+        <TaskCostBanner taskId={currentTask.id} status={currentTask.status} />
+      )}
+
 {/* Running state input with Stop button */}
       {currentTask.status === 'running' && !permissionRequest && (
         <div className="flex-shrink-0 border-t border-border bg-card/50 px-6 py-4">
@@ -1476,7 +1512,9 @@ const MessageBubble = memo(function MessageBubble({ message, shouldStream = fals
   const toolName = message.toolName || message.content?.match(/Using tool: (\w+)/)?.[1];
   const ToolIcon = toolName ? getToolIcon(toolName) : undefined;
   // Get translated tool label
-  const toolLabel = toolName && t ? t(`tools:${getToolNameForTranslation(toolName)}`, toolName) : toolName;
+  const toolLabel = toolName
+    ? getToolLabel(toolName, t)
+    : toolName;
 
   // Mark stream as complete when shouldStream becomes false
   useEffect(() => {

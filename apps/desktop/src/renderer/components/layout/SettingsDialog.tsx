@@ -41,6 +41,7 @@ import { SpeechSettingsForm } from '@/components/settings/SpeechSettingsForm';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { FallbackSettings } from '@/components/settings/FallbackSettings';
 import { DataJudSettings } from '@/components/settings/DataJudSettings';
+import { UsageSettings } from '@/components/settings/UsageSettings';
 
 // First 4 providers shown in collapsed view (matches PROVIDER_ORDER in ProviderGrid)
 const FIRST_FOUR_PROVIDERS: ProviderId[] = ['openai', 'anthropic', 'google', 'bedrock'];
@@ -53,7 +54,7 @@ interface SettingsDialogProps {
   /**
    * Initial tab to show when dialog opens ('providers', 'voice', or 'datajud')
    */
-  initialTab?: 'providers' | 'voice' | 'fallback' | 'general' | 'datajud';
+  initialTab?: 'providers' | 'voice' | 'fallback' | 'general' | 'datajud' | 'usage';
 }
 
 export default function SettingsDialog({
@@ -64,7 +65,7 @@ export default function SettingsDialog({
   initialTab = 'providers',
 }: SettingsDialogProps) {
   // AIDEV-NOTE: Tipos de tabs disponiveis no dialog
-  type TabType = 'providers' | 'voice' | 'fallback' | 'general' | 'datajud';
+  type TabType = 'providers' | 'voice' | 'fallback' | 'general' | 'datajud' | 'usage';
   // AIDEV-NOTE: Usa namespace 'settings' para traducoes do dialog
   const { t } = useTranslation('settings');
 
@@ -368,6 +369,20 @@ export default function SettingsDialog({
             >
               {t('tabs.datajud')}
             </button>
+            <button
+              onClick={() => setActiveTab('usage')}
+              className={`pb-3 px-1 font-medium text-sm transition-colors flex items-center gap-1.5 ${
+                activeTab === 'usage'
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              data-testid="settings-tab-usage"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.5h4v7H3v-7zm7-5h4v12h-4V8.5zm7-5h4v17h-4V3.5z" />
+              </svg>
+              Uso
+            </button>
           </div>
 
           {/* Providers Tab */}
@@ -619,6 +634,13 @@ export default function SettingsDialog({
                   // Callback opcional quando a API key e salva
                 }}
               />
+            </div>
+          )}
+
+          {/* Usage Tab */}
+          {activeTab === 'usage' && (
+            <div className="space-y-6">
+              <UsageSettings />
             </div>
           )}
 
