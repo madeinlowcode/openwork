@@ -279,6 +279,7 @@ interface JurisiarAPI {
     getByTask(taskId: string): Promise<unknown[]>;
     getSummary(taskId: string): Promise<unknown | null>;
     getDailySummary(days?: number): Promise<unknown[]>;
+    getLogs(options?: { limit?: number; provider?: string }): Promise<unknown[]>;
   };
 }
 

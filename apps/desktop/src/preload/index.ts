@@ -521,6 +521,10 @@ const jurisiarAPI = {
       totalCost: number;
       taskCount: number;
     }>> => ipcRenderer.invoke('token-usage:get-daily-summary', days ?? 30),
+
+    /** Get token usage logs with task info (JOIN) for Logs tab */
+    getLogs: (options?: { limit?: number; provider?: string }): Promise<unknown[]> =>
+      ipcRenderer.invoke('token-usage:get-logs', options),
   },
 
   // ============================================================================
