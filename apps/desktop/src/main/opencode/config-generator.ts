@@ -707,6 +707,42 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     }
   }
 
+  // Ensure OpenRouter is registered when fallback uses it
+  // AIDEV-NOTE: Without this, fallback fails with ProviderModelNotFoundError
+  try {
+    const { getFallbackSettings } = await import('../store/repositories/fallbackSettings');
+    const fbSettings = getFallbackSettings();
+    if (fbSettings.enabled && fbSettings.fallbackProvider === 'openrouter' && fbSettings.fallbackModelId) {
+      const openrouterKey = getApiKey('openrouter');
+      if (openrouterKey) {
+        const fallbackModelId = fbSettings.fallbackModelId; // e.g. "anthropic/claude-3-haiku"
+        // AIDEV-NOTE: Cast necessário pois ProviderConfig é union type — openrouter sempre tem 'models'
+        const openrouterConfig = providerConfig.openrouter as OpenRouterProviderConfig | undefined;
+        const existingModels = openrouterConfig?.models || {};
+        // Only add if OpenRouter provider not already configured or model missing
+        if (!existingModels[fallbackModelId]) {
+          providerConfig.openrouter = {
+            npm: '@ai-sdk/openai-compatible',
+            name: 'OpenRouter',
+            options: {
+              baseURL: 'https://openrouter.ai/api/v1',
+            },
+            models: {
+              ...existingModels,
+              [fallbackModelId]: {
+                name: fallbackModelId,
+                tools: true,
+              },
+            },
+          };
+          console.log('[OpenCode Config] OpenRouter fallback model registered:', fallbackModelId);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[OpenCode Config] Failed to load fallback settings for OpenRouter registration:', err);
+  }
+
   // Configure Moonshot if connected
   const moonshotProvider = providerSettings.connectedProviders.moonshot;
   if (moonshotProvider?.connectionStatus === 'connected') {
@@ -1178,6 +1214,15 @@ export async function syncApiKeysToOpenCodeAuth(): Promise<void> {
       auth['zai-coding-plan'] = { type: 'api', key: apiKeys.zai };
       updated = true;
       console.log('[OpenCode Auth] Synced Z.AI Coding Plan API key');
+    }
+  }
+
+  // Sync OpenRouter API key
+  if (apiKeys.openrouter) {
+    if (!auth['openrouter'] || auth['openrouter'].key !== apiKeys.openrouter) {
+      auth['openrouter'] = { type: 'api', key: apiKeys.openrouter };
+      updated = true;
+      console.log('[OpenCode Auth] Synced OpenRouter API key');
     }
   }
 

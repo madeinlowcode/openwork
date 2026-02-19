@@ -474,6 +474,56 @@ const jurisiarAPI = {
   },
 
   // ============================================================================
+  // Token Usage API
+  // ============================================================================
+  // AIDEV-NOTE: Exposes read-only token usage analytics to renderer
+  // AIDEV-WARNING: No mutation methods exposed - data is written by adapter only
+
+  tokenUsage: {
+    /** Get all usage records for a task */
+    getByTask: (taskId: string): Promise<Array<{
+      taskId: string;
+      sessionId?: string;
+      userId?: string;
+      modelId: string;
+      provider: string;
+      source: 'primary' | 'retry' | 'fallback' | 'continuation' | 'summarization';
+      stepNumber?: number;
+      inputTokens: number;
+      outputTokens: number;
+      reasoningTokens: number;
+      cacheReadTokens: number;
+      cacheWriteTokens: number;
+      costUsd?: number;
+      costEstimated?: number;
+      isEstimated: boolean;
+      stepCount: number;
+    }>> => ipcRenderer.invoke('token-usage:get-by-task', taskId),
+
+    /** Get aggregated summary for a task */
+    getSummary: (taskId: string): Promise<{
+      taskId: string;
+      totalInput: number;
+      totalOutput: number;
+      totalReasoning: number;
+      totalCost: number;
+      totalCostEstimated: number;
+      modelsUsed: string;
+      sourcesUsed: string;
+      totalEntries: number;
+    } | null> => ipcRenderer.invoke('token-usage:get-summary', taskId),
+
+    /** Get daily usage summary for the last N days */
+    getDailySummary: (days?: number): Promise<Array<{
+      date: string;
+      totalInput: number;
+      totalOutput: number;
+      totalCost: number;
+      taskCount: number;
+    }>> => ipcRenderer.invoke('token-usage:get-daily-summary', days ?? 30),
+  },
+
+  // ============================================================================
   // DataJud API
   // ============================================================================
   // AIDEV-NOTE: Exposes DataJud API methods to renderer for judiciary search
@@ -571,6 +621,16 @@ const jurisiarAPI = {
       instance?: string;
     }): Promise<{ success: boolean; result?: unknown; error?: string }> =>
       ipcRenderer.invoke('datajud:search-by-date-range', court, dateFrom, dateTo, options),
+
+    /**
+     * Search by procedural class + court body (Exemplo 3 DataJud)
+     * AIDEV-NOTE: Unico endpoint que suporta search_after com sort em @timestamp
+     */
+    searchByClassAndCourt: (court: string, classCode: string, orgaoJulgadorCode: string, options?: {
+      size?: number;
+      searchAfter?: string[];
+    }): Promise<{ success: boolean; result?: unknown; error?: string }> =>
+      ipcRenderer.invoke('datajud:search-by-class-and-court', court, classCode, orgaoJulgadorCode, options),
 
     /** Get search history */
     getHistory: (limit?: number): Promise<Array<{

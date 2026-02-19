@@ -271,6 +271,15 @@ interface JurisiarAPI {
     /** Check if authentication token exists */
     hasToken(): Promise<boolean>;
   };
+
+  // AIDEV-NOTE: datajud e tokenUsage são adicionados via IPC handlers separados (datajud-handlers, token-usage-handlers)
+  // Tipagem permissiva pois os handlers são opcionais e o tipo canônico está no preload/index.ts
+  datajud?: Record<string, (...args: unknown[]) => Promise<unknown>>;
+  tokenUsage?: {
+    getByTask(taskId: string): Promise<unknown[]>;
+    getSummary(taskId: string): Promise<unknown | null>;
+    getDailySummary(days?: number): Promise<unknown[]>;
+  };
 }
 
 interface JurisiarShell {

@@ -47,6 +47,16 @@ import {
 } from './fallback';
 import { getFallbackSettings } from '../store/repositories/fallbackSettings';
 
+// ============================================================================
+// Token Tracking Integration
+// ============================================================================
+// AIDEV-NOTE: Imports for token usage tracking system
+// AIDEV-WARNING: Token persistence must happen BEFORE PTY kill on cancel/interrupt
+import { TokenAccumulator, type TokenEntry } from './token-accumulator';
+import { CostGuard, DEFAULT_COST_LIMITS } from './cost-guard';
+import { OpenCodeFileReader } from './opencode-file-reader';
+import * as tokenUsageRepo from '../store/repositories/tokenUsage';
+
 /**
  * Error thrown when OpenCode CLI is not available
  */
@@ -95,6 +105,10 @@ export interface OpenCodeAdapterEvents {
   'fallback:started': [FallbackEngineEvents['fallback:start']];
   'fallback:completed': [FallbackEngineEvents['fallback:complete']];
   'fallback:failed': [{ error: string; phase: string }];
+  // Token tracking events
+  'token-usage:update': [{ totalCost: number; totalInput: number; totalOutput: number; stepCount: number }];
+  'token-usage:limit-reached': [{ accumulated: number; max: number }];
+  'token-usage:warning': [{ accumulated: number; max: number }];
 }
 
 /**
@@ -157,6 +171,23 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   /** Timer for active retry wait (so we can cancel on dispose) */
   private retryWaitTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // ============================================================================
+  // Token Tracking Properties
+  // ============================================================================
+  // AIDEV-NOTE: TokenAccumulator collects per-step data; CostGuard enforces limits
+  // AIDEV-WARNING: tokenAccumulator must be persisted BEFORE killing PTY on cancel
+
+  /** In-memory accumulator for token usage during task execution */
+  private tokenAccumulator: TokenAccumulator = new TokenAccumulator();
+  /** Cost circuit breaker — stops task when budget is exceeded */
+  private costGuard: CostGuard | null = null;
+  /** Current source phase for token tracking */
+  private currentSource: TokenEntry['source'] = 'primary';
+  /** Step counter within current source phase */
+  private currentStepNumber: number = 0;
+  /** File reader for OpenCode CLI storage (post-task enrichment) */
+  private fileReader: OpenCodeFileReader = new OpenCodeFileReader();
+
   /**
    * Create a new OpenCodeAdapter instance
    * @param taskId - Optional task ID for this adapter instance (used for logging)
@@ -176,6 +207,9 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   private createCompletionEnforcer(): CompletionEnforcer {
     const callbacks: CompletionEnforcerCallbacks = {
       onStartContinuation: async (prompt: string) => {
+        // AIDEV-NOTE: Mark source as continuation for token tracking
+        this.currentSource = 'continuation';
+        this.currentStepNumber = 0;
         await this.spawnSessionResumption(prompt);
       },
       onComplete: () => {
@@ -362,6 +396,9 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         data: { attempt, delayMs: delay, remaining },
       });
 
+      // AIDEV-WARNING: Finalize token accumulator source BEFORE killing PTY
+      this.tokenAccumulator.finalizeCurrentSource();
+
       // Kill current PTY (it's stuck on rate limit)
       this.pendingFallbackRestart = true;
       if (this.ptyProcess) {
@@ -392,6 +429,9 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         this.streamParser.reset();
         this.hasCompleted = false;
         this.hasReceivedFirstTool = false;
+        // AIDEV-NOTE: Update token source to 'retry' for tracking
+        this.currentSource = 'retry';
+        this.currentStepNumber = 0;
         await this.spawnSessionResumption(
           `A requisição anterior falhou por limite de taxa. Continue a tarefa de onde parou. Não repita ações já realizadas.`
         );
@@ -470,6 +510,9 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   ): Promise<void> {
     console.log('[OpenCode Adapter] Restarting with fallback model:', fallbackModel);
 
+    // AIDEV-WARNING: Finalize token accumulator source BEFORE killing PTY
+    this.tokenAccumulator.finalizeCurrentSource();
+
     // AIDEV-WARNING: Set pendingFallbackRestart BEFORE killing PTY so the
     // original PTY's onExit handler knows to ignore the exit event
     this.pendingFallbackRestart = true;
@@ -486,6 +529,9 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
 
     // Mark as fallback execution
     this.isFallbackExecution = true;
+    // AIDEV-NOTE: Update token source to 'fallback' for tracking
+    this.currentSource = 'fallback';
+    this.currentStepNumber = 0;
 
     // Create continuation prompt with context
     // AIDEV-NOTE: Prompt must be single-line to avoid shell argument breaking on Windows
@@ -632,6 +678,30 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     this.hasReceivedFirstTool = false;
     // Store original prompt for fallback context
     this.currentPrompt = config.prompt;
+
+    // ================================================================
+    // TOKEN TRACKING: Reset for new task
+    // ================================================================
+    // AIDEV-WARNING: Must reset BEFORE fallback state to ensure clean accumulator
+    this.tokenAccumulator.reset();
+    this.currentSource = 'primary';
+    this.currentStepNumber = 0;
+    this.costGuard = new CostGuard({
+      maxCostUsd: DEFAULT_COST_LIMITS.free, // TODO: Use plan-based limit when billing is implemented
+      onLimitReached: (accumulated, max) => {
+        console.log(`[OpenCode Adapter] Cost limit reached: $${accumulated.toFixed(4)} >= $${max.toFixed(2)}`);
+        this.emit('token-usage:limit-reached', { accumulated, max });
+        // Cancel the task when cost limit is reached
+        this.cancelTask().catch((err) => {
+          console.error('[OpenCode Adapter] Failed to cancel task on cost limit:', err);
+        });
+      },
+      onWarning: (accumulated, max) => {
+        console.log(`[OpenCode Adapter] Cost warning: $${accumulated.toFixed(4)} approaching $${max.toFixed(2)}`);
+        this.emit('token-usage:warning', { accumulated, max });
+      },
+    });
+
     // Reset fallback state
     this.isFallbackExecution = false;
     this.pendingFallbackRestart = false;
@@ -849,6 +919,16 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
    * Cancel the current task (hard kill)
    */
   async cancelTask(): Promise<void> {
+    // AIDEV-WARNING: Must clear retryWaitTimer BEFORE killing PTY to prevent
+    // stale timer from firing spawnSessionResumption() after cancel
+    if (this.retryWaitTimer) {
+      clearTimeout(this.retryWaitTimer);
+      this.retryWaitTimer = null;
+    }
+
+    // AIDEV-WARNING: Persist partial tokens BEFORE killing PTY
+    this.persistTokenData();
+
     if (this.ptyProcess) {
       // Kill the PTY process
       this.ptyProcess.kill();
@@ -869,6 +949,9 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
 
     // Mark as interrupted so we can handle the exit appropriately
     this.wasInterrupted = true;
+
+    // AIDEV-WARNING: Persist partial tokens on interrupt
+    this.persistTokenData();
 
     // Send Ctrl+C (ASCII 0x03) to the PTY to interrupt current operation
     this.ptyProcess.write('\x03');
@@ -959,6 +1042,14 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     if (this.waitingTransitionTimer) {
       clearTimeout(this.waitingTransitionTimer);
       this.waitingTransitionTimer = null;
+    }
+
+    // ================================================================
+    // TOKEN TRACKING: Persist partial tokens on dispose if any
+    // ================================================================
+    // AIDEV-NOTE: Non-fatal — best-effort persistence before cleanup
+    if (!this.tokenAccumulator.isEmpty()) {
+      this.persistTokenData();
     }
 
     // ================================================================
@@ -1493,6 +1584,45 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
       // - Return 'pending' if verification or continuation is needed (handled on process exit)
       // - Return 'continue' if more tool calls are expected (reason='tool_use')
       case 'step_finish':
+        // ================================================================
+        // TOKEN TRACKING: Capture tokens from step_finish if available
+        // ================================================================
+        // AIDEV-NOTE: OpenCode CLI MAY emit tokens/cost in step_finish (depends on CLI version)
+        // AIDEV-WARNING: tokens field is often undefined — only accumulate when present
+        {
+          // AIDEV-NOTE: Capturar tokens de TODOS os step_finish, inclusive errors (L8)
+          this.currentStepNumber++;
+          const stepPart = message.part as { tokens?: { input?: number; output?: number; reasoning?: number; cache?: { read?: number; write?: number } }; cost?: number };
+          if (stepPart.tokens || stepPart.cost) {
+            this.tokenAccumulator.addStep({
+              modelId: this.currentModelId || 'unknown',
+              provider: this.currentProvider || 'unknown',
+              source: this.currentSource,
+              inputTokens: stepPart.tokens?.input,
+              outputTokens: stepPart.tokens?.output,
+              reasoningTokens: stepPart.tokens?.reasoning,
+              cacheReadTokens: stepPart.tokens?.cache?.read,
+              cacheWriteTokens: stepPart.tokens?.cache?.write,
+              costUsd: stepPart.cost,
+              stepNumber: this.currentStepNumber,
+            });
+
+            // Check cost guard
+            if (stepPart.cost && this.costGuard) {
+              this.costGuard.addCost(stepPart.cost);
+            }
+
+            // Emit real-time update to UI
+            const totals = this.tokenAccumulator.getTotalTokens();
+            this.emit('token-usage:update', {
+              totalCost: this.tokenAccumulator.getTotalCost(),
+              totalInput: totals.input,
+              totalOutput: totals.output,
+              stepCount: this.currentStepNumber,
+            });
+          }
+        }
+
         if (message.part.reason === 'error') {
           if (!this.hasCompleted) {
             this.hasCompleted = true;
@@ -1647,6 +1777,18 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
       return;
     }
 
+    // ================================================================
+    // TOKEN TRACKING: Attempt to enrich from CLI storage and persist
+    // ================================================================
+    // AIDEV-NOTE: Only on clean exit (code 0) without pending fallback restart
+    if (code === 0 && !this.pendingFallbackRestart) {
+      this.enrichAndPersistTokens().catch((err) => {
+        console.warn('[OpenCode Adapter] Token enrichment/persistence failed:', err);
+        // Non-fatal: still persist what we have from stream
+        this.persistTokenData();
+      });
+    }
+
     // Delegate to completion enforcer for verification/continuation handling
     if (code === 0 && !this.hasCompleted) {
       this.completionEnforcer
@@ -1708,6 +1850,12 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
    * as natural follow-up messages in the conversation.
    */
   private async spawnSessionResumption(prompt: string): Promise<void> {
+    // AIDEV-WARNING: Guard against stale retry timers invoking this after dispose/cancel
+    if (this.isDisposed) {
+      console.log('[OpenCode Adapter] spawnSessionResumption: SKIPPING - adapter is disposed');
+      return;
+    }
+
     const sessionId = this.currentSessionId;
     if (!sessionId) {
       throw new Error('No session ID available for session resumption');
@@ -1780,6 +1928,106 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
       this.streamParser.flush();
       this.handleProcessExit(exitCode);
     });
+  }
+
+  // ============================================================================
+  // Token Tracking Helper Methods
+  // ============================================================================
+
+  /**
+   * Persist accumulated token data to SQLite.
+   * Safe to call multiple times — uses current accumulator state.
+   *
+   * AIDEV-WARNING: Must be called BEFORE killing PTY or clearing state.
+   * AIDEV-NOTE: Non-fatal — logs errors but does not throw.
+   */
+  private persistTokenData(): void {
+    const taskId = this.currentTaskId;
+    if (!taskId) return;
+
+    const entries = this.tokenAccumulator.getEntries();
+    if (entries.length === 0) return;
+
+    try {
+      const records = entries.map((entry) => ({
+        taskId,
+        sessionId: this.currentSessionId || undefined,
+        modelId: entry.modelId,
+        provider: entry.provider,
+        source: entry.source,
+        stepNumber: entry.stepNumber,
+        inputTokens: entry.inputTokens,
+        outputTokens: entry.outputTokens,
+        reasoningTokens: entry.reasoningTokens,
+        cacheReadTokens: entry.cacheReadTokens,
+        cacheWriteTokens: entry.cacheWriteTokens,
+        costUsd: entry.costUsd,
+        isEstimated: false,
+        stepCount: entry.stepCount,
+      }));
+      tokenUsageRepo.saveBatch(records);
+      console.log(`[OpenCode Adapter] Persisted ${records.length} token usage records for task ${taskId}`);
+    } catch (err) {
+      console.error('[OpenCode Adapter] Failed to persist token data:', err);
+    }
+  }
+
+  /**
+   * Attempt to read token data from OpenCode CLI's flat-file storage
+   * and merge with accumulated data, then persist.
+   *
+   * AIDEV-NOTE: CLI data is authoritative (real provider usage).
+   * If CLI data is available, it replaces stream-parsed data.
+   * AIDEV-WARNING: Coupled to CLI internal storage format — may break on CLI updates.
+   */
+  private async enrichAndPersistTokens(): Promise<void> {
+    const taskId = this.currentTaskId;
+    const sessionId = this.currentSessionId;
+    if (!taskId || !sessionId) {
+      this.persistTokenData();
+      return;
+    }
+
+    const isAvailable = await this.fileReader.isAvailable();
+    if (!isAvailable) {
+      console.log('[OpenCode Adapter] CLI file storage not available, using stream data only');
+      this.persistTokenData();
+      return;
+    }
+
+    try {
+      const sessionData = await this.fileReader.readSessionTokens(sessionId);
+      if (!sessionData || sessionData.steps.length === 0) {
+        console.log('[OpenCode Adapter] No token data from CLI storage, using stream data');
+        this.persistTokenData();
+        return;
+      }
+
+      // CLI data is authoritative — use it instead of stream data
+      console.log(`[OpenCode Adapter] Enriching with ${sessionData.steps.length} steps from CLI storage`);
+      const records = sessionData.steps.map((step, index) => ({
+        taskId,
+        sessionId,
+        modelId: step.modelId,
+        provider: step.provider,
+        source: 'primary' as const,
+        stepNumber: index + 1,
+        inputTokens: step.inputTokens,
+        outputTokens: step.outputTokens,
+        reasoningTokens: step.reasoningTokens,
+        cacheReadTokens: step.cacheReadTokens,
+        cacheWriteTokens: step.cacheWriteTokens,
+        costUsd: step.costUsd,
+        isEstimated: false,
+        stepCount: index + 1,
+      }));
+
+      tokenUsageRepo.saveBatch(records);
+      console.log(`[OpenCode Adapter] Persisted ${records.length} enriched token records for task ${taskId}`);
+    } catch (err) {
+      console.warn('[OpenCode Adapter] CLI enrichment failed, falling back to stream data:', err);
+      this.persistTokenData();
+    }
   }
 
   private generateTaskId(): string {

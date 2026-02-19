@@ -81,6 +81,10 @@ export interface ContextGenerationResult {
   method: 'template' | 'llm';
   /** Estimated token count */
   tokenCount: number;
+  /** Tokens consumed by LLM summarization Edge Function (only when method='llm') */
+  llmTokensUsed?: number;
+  /** Model used by LLM summarization Edge Function (only when method='llm') */
+  llmModel?: string;
 }
 
 /**

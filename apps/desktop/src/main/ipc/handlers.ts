@@ -121,6 +121,7 @@ import {
   detectScenarioFromPrompt,
 } from '../test-utils/mock-task-flow';
 import { registerDataJudHandlers } from './datajud-handlers';
+import { registerTokenUsageHandlers } from './token-usage-handlers';
 
 const MAX_TEXT_LENGTH = 8000;
 const ALLOWED_API_KEY_PROVIDERS = new Set(['anthropic', 'openai', 'openrouter', 'google', 'xai', 'deepseek', 'moonshot', 'zai', 'azure-foundry', 'custom', 'bedrock', 'litellm', 'minimax', 'lmstudio', 'elevenlabs']);
@@ -2657,6 +2658,13 @@ export function registerIPCHandlers(): void {
 
   // AIDEV-WARNING: Must use static import, not require() - this is an ESM project
   registerDataJudHandlers();
+
+  // ============================================================================
+  // Token Usage Handlers
+  // ============================================================================
+  // AIDEV-NOTE: Register token usage IPC handlers for analytics and cost tracking
+
+  registerTokenUsageHandlers();
 }
 
 function createTaskId(): string {

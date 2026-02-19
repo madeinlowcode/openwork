@@ -302,7 +302,7 @@ async function generateLLMContext(
   originalPrompt: string,
   messages: TaskMessage[],
   _options: ContextGeneratorOptions
-): Promise<{ context: string; usedLLM: boolean }> {
+): Promise<{ context: string; usedLLM: boolean; llmTokensUsed?: number; llmModel?: string }> {
   // Verificar se podemos fazer chamadas ao backend
   if (!canCallEdgeFunctions()) {
     console.warn(
@@ -356,6 +356,8 @@ async function generateLLMContext(
       return {
         context,
         usedLLM: true,
+        llmTokensUsed: result.data.tokens_used,
+        llmModel: result.data.model,
       };
     }
 
@@ -410,6 +412,8 @@ export async function generateContinuationContext(
 ): Promise<ContextGenerationResult> {
   let context: string;
   let method: 'template' | 'llm';
+  let llmTokensUsed: number | undefined;
+  let llmModel: string | undefined;
 
   if (options.useLLM) {
     // Tentar usar LLM para sumarizacao
@@ -417,6 +421,8 @@ export async function generateContinuationContext(
     const llmResult = await generateLLMContext(originalPrompt, messages, options);
     context = llmResult.context;
     method = llmResult.usedLLM ? 'llm' : 'template';
+    llmTokensUsed = llmResult.llmTokensUsed;
+    llmModel = llmResult.llmModel;
   } else {
     // Usar template (gratuito)
     context = generateTemplateContext(originalPrompt, messages);
@@ -437,6 +443,8 @@ export async function generateContinuationContext(
     context,
     method,
     tokenCount,
+    llmTokensUsed,
+    llmModel,
   };
 }
 

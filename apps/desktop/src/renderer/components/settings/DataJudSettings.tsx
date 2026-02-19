@@ -56,7 +56,8 @@ export function DataJudSettings({ onSave }: DataJudSettingsProps) {
   useEffect(() => {
     const loadCurrentKey = async () => {
       try {
-        const result = await window.jurisiar.datajud.getApiKey();
+        // AIDEV-NOTE: datajud não consta no tipo estático JurisiarAPI do renderer; cast necessário
+        const result = await (window as any).jurisiar?.datajud?.getApiKey();
         if (result.hasKey) {
           setApiKey(result.maskedKey || '••••••••');
           setStatus('connected');
@@ -99,7 +100,7 @@ export function DataJudSettings({ onSave }: DataJudSettingsProps) {
 
     try {
       // AIDEV-NOTE: setApiKey valida e salva em uma unica operacao
-      const saveResult = await window.jurisiar.datajud.setApiKey(cleanKey);
+      const saveResult = await (window as any).jurisiar?.datajud?.setApiKey(cleanKey);
       if (saveResult.success) {
         setApiKey(cleanKey);
         setStatus('connected');
@@ -121,7 +122,7 @@ export function DataJudSettings({ onSave }: DataJudSettingsProps) {
    */
   const clearApiKey = useCallback(async () => {
     try {
-      await window.jurisiar.datajud.deleteApiKey();
+      await (window as any).jurisiar?.datajud?.deleteApiKey();
     } catch {
       // Fallback silencioso
     }
