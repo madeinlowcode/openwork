@@ -78,14 +78,27 @@ export function registerTokenUsageHandlers(): void {
       const limit = options?.limit ?? 200;
       const provider = options?.provider;
 
+      // AIDEV-NOTE: Use camelCase aliases so the renderer hook can access fields directly
+      // SQLite returns snake_case by default; aliases avoid mapping in the client
       let sql = `
         SELECT
-          tu.id, tu.task_id, tu.session_id, tu.model_id, tu.provider, tu.source,
-          tu.step_number, tu.input_tokens, tu.output_tokens, tu.reasoning_tokens,
-          tu.cache_read_tokens, tu.cache_write_tokens, tu.cost_usd, tu.is_estimated,
-          tu.created_at,
-          t.prompt as task_prompt,
-          t.status as task_status
+          tu.id,
+          tu.task_id       AS taskId,
+          tu.session_id    AS sessionId,
+          tu.model_id      AS modelId,
+          tu.provider,
+          tu.source,
+          tu.step_number   AS stepNumber,
+          tu.input_tokens  AS inputTokens,
+          tu.output_tokens AS outputTokens,
+          tu.reasoning_tokens  AS reasoningTokens,
+          tu.cache_read_tokens  AS cacheReadTokens,
+          tu.cache_write_tokens AS cacheWriteTokens,
+          tu.cost_usd      AS costUsd,
+          tu.is_estimated  AS isEstimated,
+          tu.created_at    AS createdAt,
+          t.prompt         AS taskPrompt,
+          t.status         AS taskStatus
         FROM token_usage tu
         LEFT JOIN tasks t ON t.id = tu.task_id
       `;
