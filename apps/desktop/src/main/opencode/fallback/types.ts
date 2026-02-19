@@ -181,3 +181,41 @@ export interface TranslatedAction {
   /** Timestamp if available */
   timestamp?: string;
 }
+
+/**
+ * Configuration for the RateLimitRetryManager
+ *
+ * AIDEV-NOTE: Defaults are 3 retries with 30s/60s/120s delays + 10% jitter
+ */
+export interface RetryManagerConfig {
+  /** Maximum number of retry attempts (default: 3) */
+  maxRetries: number;
+  /** Base delay in milliseconds for first retry (default: 30000) */
+  baseDelayMs: number;
+  /** Maximum delay in milliseconds (default: 120000) */
+  maxDelayMs: number;
+  /** Jitter percentage to prevent thundering herd (default: 0.1) */
+  jitterPercent: number;
+}
+
+/**
+ * Events emitted by the RateLimitRetryManager
+ *
+ * AIDEV-NOTE: Use for IPC events to renderer for retry progress UI
+ */
+export interface RetryManagerEvents {
+  /** Emitted when waiting before a retry attempt */
+  'retry:waiting': {
+    attempt: number;
+    delayMs: number;
+    totalAttempts: number;
+  };
+  /** Emitted when a retry attempt starts */
+  'retry:attempting': {
+    attempt: number;
+  };
+  /** Emitted when all retry attempts are exhausted */
+  'retry:exhausted': {
+    totalAttempts: number;
+  };
+}

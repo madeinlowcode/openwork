@@ -40,12 +40,12 @@ const TOKENS_PER_CHAR = 0.25;
 /**
  * Maximum characters for last response excerpt
  */
-const MAX_LAST_RESPONSE_CHARS = 500;
+const MAX_LAST_RESPONSE_CHARS = 2000;
 
 /**
  * Maximum number of actions to include in context
  */
-const MAX_ACTIONS_IN_CONTEXT = 20;
+const MAX_ACTIONS_IN_CONTEXT = 30;
 
 /**
  * Maximum tokens for LLM summarization output
@@ -67,12 +67,28 @@ function estimateTokens(text: string): number {
 }
 
 /**
- * Extract tool actions from messages
+ * Maximum characters for tool output excerpt included in actions
+ */
+const MAX_TOOL_OUTPUT_CHARS = 300;
+
+/**
+ * Tool names that modify files (used to extract modified file paths)
+ *
+ * AIDEV-NOTE: Keys are lowercase for matching against normalized tool names
+ */
+const FILE_MODIFYING_TOOLS = new Set([
+  'write', 'write_file', 'edit', 'create_text_file', 'create_file',
+  'mcp_plugin_serena_serena_create_text_file', 'mcp_plugin_serena_serena_replace_content',
+  'mcp_plugin_serena_serena_replace_symbol_body',
+]);
+
+/**
+ * Extract tool actions from messages, including tool output summaries
  *
  * @param messages - Task messages to analyze
- * @returns Array of action descriptions
+ * @returns Array of action descriptions with output context
  *
- * AIDEV-NOTE: Filters for tool messages and translates them
+ * AIDEV-NOTE: Includes truncated tool output for richer context
  */
 function extractActions(messages: TaskMessage[]): string[] {
   const actions: string[] = [];
@@ -80,7 +96,15 @@ function extractActions(messages: TaskMessage[]): string[] {
   for (const msg of messages) {
     if (msg.type === 'tool' && msg.toolName) {
       const description = translateToolCall(msg.toolName, msg.toolInput);
-      actions.push(description);
+      let entry = description;
+
+      // Include tool output if available (from content field)
+      if (msg.content && msg.content.length > 0) {
+        const outputPreview = truncateText(msg.content, MAX_TOOL_OUTPUT_CHARS);
+        entry += `\n   Output: ${outputPreview}`;
+      }
+
+      actions.push(entry);
     }
   }
 
@@ -94,6 +118,66 @@ function extractActions(messages: TaskMessage[]): string[] {
   }
 
   return actions;
+}
+
+/**
+ * Extract file paths modified by tool calls
+ *
+ * @param messages - Task messages to analyze
+ * @returns Deduplicated array of file paths
+ *
+ * AIDEV-NOTE: Checks write, edit, create tools for file_path or path properties
+ */
+function extractModifiedFiles(messages: TaskMessage[]): string[] {
+  const files = new Set<string>();
+
+  for (const msg of messages) {
+    if (msg.type === 'tool' && msg.toolName && msg.toolInput) {
+      const normalized = msg.toolName.toLowerCase().replace(/-/g, '_');
+      if (FILE_MODIFYING_TOOLS.has(normalized)) {
+        const input = msg.toolInput as Record<string, unknown>;
+        const filePath = input.file_path || input.path || input.relative_path;
+        if (typeof filePath === 'string' && filePath.length > 0) {
+          files.add(filePath);
+        }
+      }
+    }
+  }
+
+  return Array.from(files);
+}
+
+/**
+ * Extract TODO items from assistant messages
+ *
+ * @param messages - Task messages to search
+ * @returns Array of TODO strings found in messages
+ *
+ * AIDEV-NOTE: Matches common TODO patterns like "TODO:", "- [ ]", "AIDEV-TODO:"
+ */
+function extractTodos(messages: TaskMessage[]): string[] {
+  const todos: string[] = [];
+  const todoPattern = /(?:TODO|AIDEV-TODO|FIXME):\s*(.+)/gi;
+  const checkboxPattern = /- \[ \]\s*(.+)/g;
+
+  for (const msg of messages) {
+    if ((msg.type === 'assistant' || msg.type === 'tool') && msg.content) {
+      let match: RegExpExecArray | null;
+
+      todoPattern.lastIndex = 0;
+      while ((match = todoPattern.exec(msg.content)) !== null) {
+        todos.push(match[1].trim());
+      }
+
+      checkboxPattern.lastIndex = 0;
+      while ((match = checkboxPattern.exec(msg.content)) !== null) {
+        todos.push(match[1].trim());
+      }
+    }
+  }
+
+  // Deduplicate
+  return [...new Set(todos)];
 }
 
 /**
@@ -158,6 +242,8 @@ function generateTemplateContext(
 ): string {
   const actions = extractActions(messages);
   const lastResponse = getLastAssistantResponse(messages);
+  const modifiedFiles = extractModifiedFiles(messages);
+  const todos = extractTodos(messages);
 
   let context = `## Tarefa Original\n${originalPrompt}\n\n`;
 
@@ -166,6 +252,22 @@ function generateTemplateContext(
     context += `As seguintes acoes ja foram realizadas:\n`;
     actions.forEach((action, index) => {
       context += `${index + 1}. ${action}\n`;
+    });
+    context += '\n';
+  }
+
+  if (modifiedFiles.length > 0) {
+    context += `## Arquivos Modificados\n`;
+    modifiedFiles.forEach((file) => {
+      context += `- ${file}\n`;
+    });
+    context += '\n';
+  }
+
+  if (todos.length > 0) {
+    context += `## TODOs Pendentes\n`;
+    todos.forEach((todo) => {
+      context += `- ${todo}\n`;
     });
     context += '\n';
   }

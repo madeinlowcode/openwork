@@ -4,7 +4,7 @@ import { app } from 'electron';
 import fs from 'fs';
 import { StreamParser } from './stream-parser';
 import { OpenCodeLogWatcher, createLogWatcher, OpenCodeLogError } from './log-watcher';
-import { CompletionEnforcer, CompletionEnforcerCallbacks } from './completion';
+import { CompletionEnforcer, CompletionEnforcerCallbacks, CompletionFlowState } from './completion';
 import {
   getOpenCodeCliPath,
   isOpenCodeBundled,
@@ -41,6 +41,7 @@ import {
   FallbackEngine,
   createFallbackEngine,
   isRateLimitError,
+  RateLimitRetryManager,
   type FallbackHandleResult,
   type FallbackEngineEvents,
 } from './fallback';
@@ -149,6 +150,12 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   private currentPrompt: string | null = null;
   /** Whether we're currently in a fallback execution */
   private isFallbackExecution: boolean = false;
+  /** Whether a fallback restart is in progress (original PTY exit should be ignored) */
+  private pendingFallbackRestart: boolean = false;
+  /** Retry manager for rate limit retries before fallback */
+  private retryManager: RateLimitRetryManager = new RateLimitRetryManager();
+  /** Timer for active retry wait (so we can cancel on dispose) */
+  private retryWaitTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Create a new OpenCodeAdapter instance
@@ -240,12 +247,25 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
           });
         }
 
+        // AIDEV-NOTE: If the agent already called complete_task(success) but the CompletionEnforcer
+        // downgraded it to partial (due to incomplete todos) and the continuation fails (rate limit),
+        // we should treat this as success since the original work was completed.
+        const wasOriginallySuccess = this.completionEnforcer.wasDowngradedFromSuccess();
+
         this.hasCompleted = true;
-        this.emit('complete', {
-          status: 'error',
-          sessionId: this.currentSessionId || undefined,
-          error: errorMessage,
-        });
+        if (wasOriginallySuccess) {
+          console.log('[OpenCode Adapter] Continuation failed but original task was success - emitting success');
+          this.emit('complete', {
+            status: 'success',
+            sessionId: this.currentSessionId || undefined,
+          });
+        } else {
+          this.emit('complete', {
+            status: 'error',
+            sessionId: this.currentSessionId || undefined,
+            error: errorMessage,
+          });
+        }
 
         // Kill the PTY process since we've detected an error
         if (this.ptyProcess) {
@@ -313,25 +333,90 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   }
 
   /**
-   * Handle a rate limit error by attempting fallback to alternate model
+   * Handle a rate limit error by retrying with backoff, then falling back
    *
    * @param errorMessage - The error message that was detected
-   * @returns True if fallback was initiated, false if not possible
+   * @returns True if retry or fallback was initiated, false if not possible
    *
-   * AIDEV-NOTE: Generates context and restarts task with fallback model
-   * AIDEV-WARNING: May take time due to context generation
+   * AIDEV-NOTE: Retry first (preserves session), fallback only as last resort
+   * AIDEV-WARNING: Retry uses same model+session, fallback switches model
    */
   private async handleRateLimitWithFallback(errorMessage: string): Promise<boolean> {
+    // ================================================================
+    // PHASE 1: Try retrying with same model (preserves full context)
+    // ================================================================
+    if (this.retryManager.shouldRetry()) {
+      const delay = this.retryManager.getNextDelay();
+      const attempt = this.retryManager.getCurrentAttempt() + 1;
+      const remaining = this.retryManager.getRemainingRetries();
+
+      console.log(`[OpenCode Adapter] Rate limit retry ${attempt}/${attempt + remaining - 1}, waiting ${delay}ms`);
+
+      this.emit('progress', {
+        stage: 'retry-waiting',
+        message: `Rate limit. Retentativa ${attempt} em ${Math.round(delay / 1000)}s...`,
+      });
+      this.emit('debug', {
+        type: 'retry_waiting',
+        message: `Rate limit retry: waiting ${delay}ms before attempt ${attempt}`,
+        data: { attempt, delayMs: delay, remaining },
+      });
+
+      // Kill current PTY (it's stuck on rate limit)
+      this.pendingFallbackRestart = true;
+      if (this.ptyProcess) {
+        try { this.ptyProcess.kill(); } catch (err) {
+          console.warn('[OpenCode Adapter] Error killing PTY for retry:', err);
+        }
+        this.ptyProcess = null;
+      }
+
+      // Wait with backoff delay
+      await new Promise<void>((resolve) => {
+        this.retryWaitTimer = setTimeout(() => {
+          this.retryWaitTimer = null;
+          resolve();
+        }, delay);
+      });
+
+      // Record attempt after waiting
+      this.retryManager.recordAttempt();
+
+      // Resume session with SAME model (preserves full context!)
+      this.emit('progress', {
+        stage: 'retry-attempting',
+        message: `Retentativa ${attempt}...`,
+      });
+
+      try {
+        this.streamParser.reset();
+        this.hasCompleted = false;
+        this.hasReceivedFirstTool = false;
+        await this.spawnSessionResumption(
+          `A requisição anterior falhou por limite de taxa. Continue a tarefa de onde parou. Não repita ações já realizadas.`
+        );
+        return true;
+      } catch (error) {
+        console.error('[OpenCode Adapter] Retry session resumption failed:', error);
+        // Fall through to fallback
+      }
+    }
+
+    // ================================================================
+    // PHASE 2: Retries exhausted - fall back to alternate model
+    // ================================================================
     if (!this.fallbackEngine) {
-      console.log('[OpenCode Adapter] No fallback engine available');
+      console.log('[OpenCode Adapter] No fallback engine available and retries exhausted');
       return false;
     }
 
-    try {
-      // Prepare error object for fallback engine
-      const error = { message: errorMessage, code: 'RATE_LIMIT' };
+    console.log('[OpenCode Adapter] Retries exhausted, attempting model fallback...');
+    this.emit('progress', {
+      stage: 'retry-exhausted',
+      message: 'Retries esgotados. Acionando fallback...',
+    });
 
-      // Handle the error with fallback engine
+    try {
       const result: FallbackHandleResult = await this.fallbackEngine.handleError(
         errorMessage,
         this.messages,
@@ -351,7 +436,6 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         contextMethod: result.contextMethod,
       });
 
-      // Initiate fallback restart
       await this.restartWithFallback(
         {
           id: result.fallbackModel!,
@@ -386,6 +470,10 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
   ): Promise<void> {
     console.log('[OpenCode Adapter] Restarting with fallback model:', fallbackModel);
 
+    // AIDEV-WARNING: Set pendingFallbackRestart BEFORE killing PTY so the
+    // original PTY's onExit handler knows to ignore the exit event
+    this.pendingFallbackRestart = true;
+
     // Kill current PTY process
     if (this.ptyProcess) {
       try {
@@ -400,23 +488,15 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     this.isFallbackExecution = true;
 
     // Create continuation prompt with context
-    const continuationPrompt = `
-[CONTINUACAO DE TAREFA - FALLBACK AUTOMATICO]
-
-A tarefa anterior foi interrompida por limite de requisicoes do modelo.
-Contexto do trabalho ja realizado:
-
-${context}
-
-Por favor, continue a tarefa de onde parou.
-
-Tarefa original: ${this.currentPrompt || 'N/A'}
-`;
+    // AIDEV-NOTE: Prompt must be single-line to avoid shell argument breaking on Windows
+    const contextOneLine = context.replace(/[\r\n]+/g, ' ').trim();
+    const originalPrompt = (this.currentPrompt || 'N/A').replace(/[\r\n]+/g, ' ').trim();
+    const continuationPrompt = `[CONTINUACAO DE TAREFA - FALLBACK AUTOMATICO] A tarefa anterior foi interrompida por limite de requisicoes do modelo. Contexto: ${contextOneLine} -- Tarefa original: ${originalPrompt} -- Continue a tarefa de onde parou.`;
 
     // Reset adapter state for new execution
     this.streamParser.reset();
     this.hasCompleted = false;
-    this.completionEnforcer.reset();
+    this.completionEnforcer.resetToolsUsed();
     this.hasReceivedFirstTool = false;
 
     // Start new task with fallback model
@@ -479,7 +559,7 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
 
       this.ptyProcess = pty.spawn(shellCmd, shellArgs, {
         name: 'xterm-256color',
-        cols: 200,
+        cols: 30000,
         rows: 30,
         cwd: safeCwd,
         env: env as { [key: string]: string },
@@ -505,12 +585,20 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
           const success = exitCode === 0;
           this.fallbackEngine.logResult(success);
         }
+        console.log('[OpenCode Adapter] Flushing stream parser before process exit');
+        this.emit('debug', {
+          type: 'process_exit',
+          message: 'Flushing stream parser before process exit',
+          data: { exit_code: exitCode, flushed_on_exit: true, path: 'fallback' },
+        });
+        this.streamParser.flush();
         this.handleProcessExit(exitCode);
       });
 
       console.log('[OpenCode Adapter] Fallback PTY spawned with PID:', this.ptyProcess.pid);
     } catch (error) {
       // Restore original model on failure
+      this.pendingFallbackRestart = false;
       this.currentModelId = originalModelId;
       this.currentProvider = originalProvider;
       throw error;
@@ -546,6 +634,8 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
     this.currentPrompt = config.prompt;
     // Reset fallback state
     this.isFallbackExecution = false;
+    this.pendingFallbackRestart = false;
+    this.retryManager.reset();
     // Clear any existing waiting transition timer
     if (this.waitingTransitionTimer) {
       clearTimeout(this.waitingTransitionTimer);
@@ -675,7 +765,7 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
 
       this.ptyProcess = pty.spawn(shellCmd, shellArgs, {
         name: 'xterm-256color',
-        cols: 200,
+        cols: 30000,
         rows: 30,
         cwd: safeCwd,
         env: env as { [key: string]: string },
@@ -711,6 +801,13 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
         const exitMsg = `PTY Process exited with code: ${exitCode}, signal: ${signal}`;
         console.log('[OpenCode CLI]', exitMsg);
         this.emit('debug', { type: 'exit', message: exitMsg, data: { exitCode, signal } });
+        console.log('[OpenCode Adapter] Flushing stream parser before process exit');
+        this.emit('debug', {
+          type: 'process_exit',
+          message: 'Flushing stream parser before process exit',
+          data: { exit_code: exitCode, signal, flushed_on_exit: true, path: 'normal' },
+        });
+        this.streamParser.flush();
         this.handleProcessExit(exitCode);
       });
     }
@@ -849,6 +946,14 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
     this.hasReceivedFirstTool = false;
     this.currentPrompt = null;
     this.isFallbackExecution = false;
+    this.pendingFallbackRestart = false;
+
+    // Clear retry wait timer
+    if (this.retryWaitTimer) {
+      clearTimeout(this.retryWaitTimer);
+      this.retryWaitTimer = null;
+    }
+    this.retryManager.dispose();
 
     // Clear waiting transition timer
     if (this.waitingTransitionTimer) {
@@ -1456,10 +1561,12 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
    */
   private escapeShellArg(arg: string): string {
     if (process.platform === 'win32') {
-      if (arg.includes(' ') || arg.includes('"')) {
-        return `"${arg.replace(/"/g, '""')}"`;
+      // Replace newlines/carriage returns with spaces to prevent shell command breaking
+      const sanitized = arg.replace(/[\r\n]+/g, ' ');
+      if (sanitized.includes(' ') || sanitized.includes('"')) {
+        return `"${sanitized.replace(/"/g, '""')}"`;
       }
-      return arg;
+      return sanitized;
     } else {
       const needsEscaping = ["'", ' ', '$', '`', '\\', '"', '\n'].some(c => arg.includes(c));
       if (needsEscaping) {
@@ -1500,8 +1607,32 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
    * continuation retries) while maintaining the same session context.
    */
   private handleProcessExit(code: number | null): void {
+    // AIDEV-WARNING: If a fallback restart is pending, this exit is from the ORIGINAL PTY
+    // being killed intentionally. We must ignore it to avoid marking the task as failed
+    // while the fallback PTY is already running.
+    if (this.pendingFallbackRestart) {
+      console.log(`[OpenCode Adapter] handleProcessExit: IGNORING exit code=${code} - fallback restart is pending`);
+      this.pendingFallbackRestart = false; // Clear for the fallback PTY's future exit
+      return;
+    }
+
     // Clean up PTY process reference
     this.ptyProcess = null;
+
+    const completionStateBefore = CompletionFlowState[this.completionEnforcer.getState()];
+    const successSignalSeen = this.completionEnforcer.wasSuccessSignalSeen();
+    const continuationAttempts = this.completionEnforcer.getContinuationAttempts();
+    console.log(`[OpenCode Adapter] handleProcessExit: code=${code}, hasCompleted=${this.hasCompleted}, isFallback=${this.isFallbackExecution}, successSignal=${successSignalSeen}`);
+    this.emit('debug', {
+      type: 'completion_exit_state',
+      message: 'Completion state before process exit handling',
+      data: {
+        exit_code: code,
+        completion_state_before_exit: completionStateBefore,
+        success_signal_seen: successSignalSeen,
+        continuation_attempts: continuationAttempts,
+      },
+    });
 
     // Handle interrupted tasks immediately (before completion enforcer)
     // This ensures user interrupts are respected regardless of completion state
@@ -1518,15 +1649,37 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
 
     // Delegate to completion enforcer for verification/continuation handling
     if (code === 0 && !this.hasCompleted) {
-      this.completionEnforcer.handleProcessExit(code).catch((error) => {
-        console.error('[OpenCode Adapter] Completion enforcer error:', error);
-        this.hasCompleted = true;
-        this.emit('complete', {
-          status: 'error',
-          sessionId: this.currentSessionId || undefined,
-          error: `Failed to complete: ${error.message}`,
+      this.completionEnforcer
+        .handleProcessExit(code)
+        .then(() => {
+          const completionStateAfter = CompletionFlowState[this.completionEnforcer.getState()];
+          this.emit('debug', {
+            type: 'completion_exit_state',
+            message: 'Completion state after process exit handling',
+            data: {
+              exit_code: code,
+              completion_state_after_exit: completionStateAfter,
+              success_signal_seen: this.completionEnforcer.wasSuccessSignalSeen(),
+              continuation_attempts: this.completionEnforcer.getContinuationAttempts(),
+            },
+          });
+        })
+        .catch((error) => {
+          console.error('[OpenCode Adapter] Completion enforcer error:', error);
+          if (this.completionEnforcer.wasSuccessSignalSeen()) {
+            console.log('[OpenCode Adapter] Success signal was seen despite late error - completing as success');
+            this.hasCompleted = true;
+            this.emit('complete', { status: 'success', sessionId: this.currentSessionId || undefined });
+            this.currentTaskId = null;
+            return;
+          }
+          this.hasCompleted = true;
+          this.emit('complete', {
+            status: 'error',
+            sessionId: this.currentSessionId || undefined,
+            error: `Failed to complete: ${error.message}`,
+          });
         });
-      });
       return; // Let completion enforcer handle next steps
     }
 
@@ -1592,7 +1745,7 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
 
     this.ptyProcess = pty.spawn(shellCmd, shellArgs, {
       name: 'xterm-256color',
-      cols: 200,
+      cols: 30000,
       rows: 30,
       cwd: safeCwd,
       env: env as { [key: string]: string },
@@ -1618,6 +1771,13 @@ Tarefa original: ${this.currentPrompt || 'N/A'}
     });
 
     this.ptyProcess.onExit(({ exitCode }) => {
+      console.log('[OpenCode Adapter] Flushing stream parser before process exit');
+      this.emit('debug', {
+        type: 'process_exit',
+        message: 'Flushing stream parser before process exit',
+        data: { exit_code: exitCode, flushed_on_exit: true, path: 'resumption' },
+      });
+      this.streamParser.flush();
       this.handleProcessExit(exitCode);
     });
   }

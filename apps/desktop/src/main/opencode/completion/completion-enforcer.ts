@@ -42,6 +42,8 @@ export class CompletionEnforcer {
   private callbacks: CompletionEnforcerCallbacks;
   private currentTodos: TodoItem[] = [];
   private toolsWereUsed: boolean = false;
+  private downgradedFromSuccess: boolean = false;
+  private successSignalSeen: boolean = false;
   
   /**
    * AIDEV-NOTE: Timeout para garantir que o frontend seja desbloqueado mesmo se
@@ -56,7 +58,7 @@ export class CompletionEnforcer {
    * Continuations legitimas podem demorar mais em tasks complexas.
    * Ajuste conforme necessario baseado em observacoes de uso real.
    */
-  private static readonly DEFAULT_CONTINUATION_TIMEOUT_MS = 30000;
+  private static readonly DEFAULT_CONTINUATION_TIMEOUT_MS = 120000;
 
   constructor(
     callbacks: CompletionEnforcerCallbacks,
@@ -112,6 +114,10 @@ export class CompletionEnforcer {
       remaining_work: args?.remaining_work,
     };
 
+    if (completeTaskArgs.status === 'success') {
+      this.successSignalSeen = true;
+    }
+
     // If claiming success but have incomplete todos, downgrade to partial BEFORE recording state
     // This ensures the state machine enters the partial continuation path instead of success/verification
     if (completeTaskArgs.status === 'success' && this.hasIncompleteTodos()) {
@@ -120,6 +126,8 @@ export class CompletionEnforcer {
         'Agent claimed success but has incomplete todos - downgrading to partial',
         { incompleteTodos: this.getIncompleteTodosSummary() }
       );
+      // AIDEV-NOTE: Track that this was originally success before downgrade
+      this.downgradedFromSuccess = true;
       // Downgrade status to partial and set remaining work
       completeTaskArgs.status = 'partial';
       completeTaskArgs.remaining_work = this.getIncompleteTodosSummary();
@@ -144,8 +152,25 @@ export class CompletionEnforcer {
    * - 'complete': Task is done, emit complete
    */
   handleStepFinish(reason: string): StepFinishAction {
+    const stateBefore = CompletionFlowState[this.state.getState()];
+    const emitTransitionDebug = (action: StepFinishAction) => {
+      this.callbacks.onDebug(
+        'completion_step_finish_transition',
+        `handleStepFinish transition ${stateBefore} -> ${CompletionFlowState[this.state.getState()]}`,
+        {
+          reason,
+          action,
+          completion_state_before: stateBefore,
+          completion_state_after: CompletionFlowState[this.state.getState()],
+          success_signal_seen: this.successSignalSeen,
+          continuation_attempts: this.state.getContinuationAttempts(),
+        }
+      );
+    };
+
     // Only handle 'stop' or 'end_turn' (final completion)
     if (reason !== 'stop' && reason !== 'end_turn') {
+      emitTransitionDebug('continue');
       return 'continue';
     }
 
@@ -156,7 +181,15 @@ export class CompletionEnforcer {
         'Scheduling continuation for partial completion',
         { remainingWork: this.state.getCompleteTaskArgs()?.remaining_work }
       );
+      emitTransitionDebug('pending');
       return 'pending'; // Let handleProcessExit start partial continuation
+    }
+
+    // If complete_task(success) was already called, skip continuation
+    if (this.state.isCompleteTaskCalled() && this.successSignalSeen) {
+      this.callbacks.onDebug('skip_continuation', 'complete_task(success) already called - skipping continuation');
+      emitTransitionDebug('complete');
+      return 'complete';
     }
 
     // Check if agent stopped without calling complete_task
@@ -168,6 +201,7 @@ export class CompletionEnforcer {
           'skip_continuation',
           'No tools used and no complete_task called — treating as conversational response'
         );
+        emitTransitionDebug('complete');
         return 'complete';
       }
 
@@ -177,6 +211,7 @@ export class CompletionEnforcer {
           'continuation',
           `Scheduled continuation prompt (attempt ${this.state.getContinuationAttempts()})`
         );
+        emitTransitionDebug('pending');
         return 'pending';
       }
 
@@ -185,6 +220,7 @@ export class CompletionEnforcer {
     }
 
     // Task is complete (either complete_task called and verified, or max retries)
+    emitTransitionDebug('complete');
     return 'complete';
   }
 
@@ -196,6 +232,28 @@ export class CompletionEnforcer {
    * O timeout garante que onComplete() seja chamado mesmo se a continuation falhar.
    */
   async handleProcessExit(exitCode: number): Promise<void> {
+    const stateBefore = CompletionFlowState[this.state.getState()];
+    console.log(`[CompletionEnforcer] handleProcessExit: exitCode=${exitCode}, state=${stateBefore}, successSignal=${this.successSignalSeen}, completeTaskCalled=${this.state.isCompleteTaskCalled()}`);
+    this.callbacks.onDebug('completion_process_exit_before', 'Completion state before process exit handling', {
+      exit_code: exitCode,
+      completion_state_before_exit: stateBefore,
+      success_signal_seen: this.successSignalSeen,
+      continuation_attempts: this.state.getContinuationAttempts(),
+    });
+
+    if (this.successSignalSeen && exitCode === 0) {
+      this.callbacks.onDebug('success_exit', 'Process exited cleanly with success signal - completing');
+      this.callbacks.onDebug('completion_process_exit_after', 'Completion state after process exit handling', {
+        exit_code: exitCode,
+        completion_state_after_exit: CompletionFlowState[this.state.getState()],
+        success_signal_seen: this.successSignalSeen,
+        continuation_attempts: this.state.getContinuationAttempts(),
+      });
+      this.clearContinuationTimeout();
+      this.callbacks.onComplete();
+      return;
+    }
+
     // Check if we need to continue after partial completion
     if (this.state.isPendingPartialContinuation() && exitCode === 0) {
       const args = this.state.getCompleteTaskArgs();
@@ -227,6 +285,12 @@ export class CompletionEnforcer {
       this.startContinuationTimeout();
       
       await this.callbacks.onStartContinuation(prompt);
+      this.callbacks.onDebug('completion_process_exit_after', 'Completion state after process exit handling', {
+        exit_code: exitCode,
+        completion_state_after_exit: CompletionFlowState[this.state.getState()],
+        success_signal_seen: this.successSignalSeen,
+        continuation_attempts: this.state.getContinuationAttempts(),
+      });
       return;
     }
 
@@ -248,6 +312,12 @@ export class CompletionEnforcer {
       this.startContinuationTimeout();
       
       await this.callbacks.onStartContinuation(prompt);
+      this.callbacks.onDebug('completion_process_exit_after', 'Completion state after process exit handling', {
+        exit_code: exitCode,
+        completion_state_after_exit: CompletionFlowState[this.state.getState()],
+        success_signal_seen: this.successSignalSeen,
+        continuation_attempts: this.state.getContinuationAttempts(),
+      });
       return;
     }
 
@@ -258,6 +328,12 @@ export class CompletionEnforcer {
     // - IDLE: process exited cleanly without triggering completion flow
     // - MAX_RETRIES_REACHED: exhausted all continuation attempts
     this.clearContinuationTimeout();
+    this.callbacks.onDebug('completion_process_exit_after', 'Completion state after process exit handling', {
+      exit_code: exitCode,
+      completion_state_after_exit: CompletionFlowState[this.state.getState()],
+      success_signal_seen: this.successSignalSeen,
+      continuation_attempts: this.state.getContinuationAttempts(),
+    });
     this.callbacks.onComplete();
   }
 
@@ -279,6 +355,41 @@ export class CompletionEnforcer {
     this.state.reset();
     this.currentTodos = [];
     this.toolsWereUsed = false;
+    this.downgradedFromSuccess = false;
+    this.successSignalSeen = false;
+  }
+
+  /**
+   * Reseta apenas o flag toolsWereUsed, preservando o restante do estado.
+   * AIDEV-NOTE: Usado no restartWithFallback para não perder estado de continuation/completion
+   * enquanto permite que a nova invocação seja avaliada como fresh em relação a uso de tools.
+   */
+  resetToolsUsed(): void {
+    this.toolsWereUsed = false;
+  }
+
+  /**
+   * Returns the complete_task args if available.
+   * AIDEV-NOTE: Used by adapter to check original task status when continuation fails.
+   */
+  getCompleteTaskArgs(): CompleteTaskArgs | null {
+    return this.state.getCompleteTaskArgs();
+  }
+
+  /**
+   * Returns true if agent originally called complete_task(success) but was downgraded to partial.
+   * AIDEV-NOTE: Used by adapter to emit success instead of error when continuation fails.
+   */
+  wasDowngradedFromSuccess(): boolean {
+    return this.downgradedFromSuccess;
+  }
+
+  /**
+   * Returns true if complete_task was called with status 'success' at any point.
+   * AIDEV-NOTE: Sticky signal - once set, remains true even after downgrade to partial.
+   */
+  wasSuccessSignalSeen(): boolean {
+    return this.successSignalSeen;
   }
 
   /**
