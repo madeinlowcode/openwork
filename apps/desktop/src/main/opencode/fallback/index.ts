@@ -36,6 +36,8 @@ export type {
   FallbackEngineEvents,
   ToolCallInfo,
   TranslatedAction,
+  RetryManagerConfig,
+  RetryManagerEvents,
 } from './types';
 
 // Rate limit detection
@@ -68,3 +70,6 @@ export {
   createFallbackEngine,
   shouldTriggerFallback,
 } from './fallback-engine';
+
+// Retry manager
+export { RateLimitRetryManager } from './retry-manager';
