@@ -59,11 +59,31 @@ function getSalt(): Buffer {
   return Buffer.from(saltBase64, 'base64');
 }
 
+const INSTALL_ID_RAW_KEY = '__install_id__';
+
+// AIDEV-NOTE: ID gerado 1x por instalacao, armazenado sem criptografia
+// pois ele E PARTE da chave de derivacao (nao pode ser criptografado com a propria chave)
+// AIDEV-SECURITY: Este UUID torna a chave derivada unica por instalacao,
+// impedindo que copiar secure-storage.json para outra maquina permita decriptar
+function getInstallationId(): string {
+  const store = getSecureStore();
+  const values = store.get('values');
+  if (values[INSTALL_ID_RAW_KEY]) {
+    return values[INSTALL_ID_RAW_KEY];
+  }
+  const id = crypto.randomBytes(16).toString('hex');
+  store.set('values', { ...values, [INSTALL_ID_RAW_KEY]: id });
+  return id;
+}
+
 /**
  * Derive an encryption key from machine-specific data.
  * This is deterministic for the same machine/installation.
  *
  * Note: We avoid hostname as it can be changed by users (renaming laptop).
+ *
+ * AIDEV-WARNING: Alterar os fatores do machineData invalida TODAS as chaves existentes.
+ * Dados criptografados com a chave anterior nao serao decriptaveis.
  */
 function getDerivedKey(): Buffer {
   if (_derivedKey) {
@@ -78,6 +98,8 @@ function getDerivedKey(): Buffer {
     os.homedir(),
     os.userInfo().username,
     'com.jurisiar.app', // App identifier
+    app.getPath('userData'), // path unico por OS user + instalacao
+    getInstallationId(), // UUID aleatorio gerado na 1a execucao
   ].join(':');
 
   const salt = getSalt();
@@ -98,7 +120,7 @@ function getDerivedKey(): Buffer {
  * Encrypt a string using AES-256-GCM.
  * Returns format: iv:authTag:ciphertext (all base64)
  */
-function encryptValue(value: string): string {
+export function encryptValue(value: string): string {
   const key = getDerivedKey();
   const iv = crypto.randomBytes(12); // GCM recommended IV size
 
@@ -116,7 +138,7 @@ function encryptValue(value: string): string {
 /**
  * Decrypt a value encrypted with encryptValue.
  */
-function decryptValue(encryptedData: string): string | null {
+export function decryptValue(encryptedData: string): string | null {
   try {
     const parts = encryptedData.split(':');
     if (parts.length !== 3) {
