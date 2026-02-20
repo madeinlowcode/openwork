@@ -126,6 +126,7 @@ import {
   detectScenarioFromPrompt,
 } from '../test-utils/mock-task-flow';
 import { registerDataJudHandlers } from './datajud-handlers';
+import { registerEscavadorHandlers } from './escavador-handlers';
 import { registerTokenUsageHandlers } from './token-usage-handlers';
 
 const MAX_TEXT_LENGTH = 8000;
@@ -2659,6 +2660,34 @@ export function registerIPCHandlers(): void {
   });
 
   // ============================================================================
+  // Better Auth Handlers
+  // ============================================================================
+  // AIDEV-NOTE: Handlers para autenticacao via Better Auth (Cloudflare Worker)
+  // AIDEV-WARNING: authClient gerencia sessao internamente — nao expor tokens
+  // AIDEV-SECURITY: signIn retorna sessao, nao tokens raw
+
+  handle('auth:sign-in', async (
+    _event: IpcMainInvokeEvent,
+    credentials: { email: string; password: string }
+  ) => {
+    const { authClient } = await import('../lib/auth-client');
+    const result = await authClient.signIn.email(credentials);
+    if (result.error) throw new Error(result.error.message ?? 'Authentication failed');
+    return result.data;
+  });
+
+  handle('auth:sign-out', async () => {
+    const { authClient } = await import('../lib/auth-client');
+    await authClient.signOut();
+  });
+
+  handle('auth:get-session', async () => {
+    const { authClient } = await import('../lib/auth-client');
+    const session = await authClient.getSession();
+    return session?.data ?? null;
+  });
+
+  // ============================================================================
   // DataJud Handlers
   // ============================================================================
   // AIDEV-NOTE: Register DataJud IPC handlers for API key management, search, and history
@@ -2666,6 +2695,14 @@ export function registerIPCHandlers(): void {
 
   // AIDEV-WARNING: Must use static import, not require() - this is an ESM project
   registerDataJudHandlers();
+
+  // ============================================================================
+  // Escavador Handlers
+  // ============================================================================
+  // AIDEV-NOTE: Register Escavador IPC handlers for Bearer token management, search, and history
+  // AIDEV-WARNING: Bearer tokens are never exposed via IPC - only masked values are returned
+
+  registerEscavadorHandlers();
 
   // ============================================================================
   // Token Usage Handlers

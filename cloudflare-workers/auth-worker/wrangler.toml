@@ -7,9 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [[hyperdrive]]
 binding = "DB_HYPERDRIVE"
-id = "SEU_HYPERDRIVE_ID"
-# Configurar no dashboard: Workers & Pages > Hyperdrive > Create
-# Aponta para seu PostgreSQL existente
+id = "098c6059e7374fa884a93784148f6296"
 
 [vars]
 # Secrets via: wrangler secret put BETTER_AUTH_SECRET

@@ -9,6 +9,16 @@ import { fileURLToPath } from 'url';
 const APP_DATA_NAME = 'Jurisiar';
 app.setPath('userData', path.join(app.getPath('appData'), APP_DATA_NAME));
 
+// AIDEV-NOTE: Better Auth Electron — registerSchemesAsPrivileged DEVE ser chamado antes de app.whenReady()
+// O setupMain() registra o protocolo 'openwork://' para deep linking de auth
+// Importamos e configuramos antes de qualquer outra coisa relacionada ao app
+import { authClient } from './lib/auth-client';
+try {
+  authClient.setupMain();
+} catch {
+  // Non-fatal — app funciona sem Better Auth (modo offline/BYOK)
+}
+
 import { registerIPCHandlers } from './ipc/handlers';
 import { flushPendingTasks } from './store/taskHistory';
 import { disposeTaskManager } from './opencode/task-manager';

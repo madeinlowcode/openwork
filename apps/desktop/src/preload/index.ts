@@ -471,6 +471,24 @@ const jurisiarAPI = {
     /** Check if authentication token exists */
     hasToken: (): Promise<boolean> =>
       ipcRenderer.invoke('auth:has-token'),
+
+    // ========================================================================
+    // Better Auth Methods (Cloudflare Worker)
+    // ========================================================================
+    // AIDEV-NOTE: Metodos de autenticacao via Better Auth
+    // AIDEV-WARNING: signIn retorna sessao completa, nao tokens raw
+
+    /** Sign in with email and password via Better Auth */
+    signIn: (credentials: { email: string; password: string }): Promise<unknown> =>
+      ipcRenderer.invoke('auth:sign-in', credentials),
+
+    /** Sign out via Better Auth */
+    signOut: (): Promise<void> =>
+      ipcRenderer.invoke('auth:sign-out'),
+
+    /** Get current session from Better Auth */
+    getSession: (): Promise<unknown> =>
+      ipcRenderer.invoke('auth:get-session'),
   },
 
   // ============================================================================
@@ -663,6 +681,74 @@ const jurisiarAPI = {
     /** Clear search cache */
     clearCache: (): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('datajud:clear-cache'),
+  },
+
+  // ============================================================================
+  // Escavador API
+  // ============================================================================
+  // AIDEV-NOTE: Exposes Escavador API methods to renderer for legal search
+  // AIDEV-WARNING: Bearer tokens are never exposed - only masked values returned
+  // 🔒 AIDEV-SECURITY: Token validation happens before storing
+
+  escavador: {
+    /** Check if Escavador Bearer token is configured */
+    isConfigured: (): Promise<boolean> =>
+      ipcRenderer.invoke('escavador:is-configured'),
+
+    /** Set Escavador Bearer token (validates before storing) */
+    setToken: (token: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('escavador:set-token', token),
+
+    /** Get masked token status */
+    getToken: (): Promise<{ hasToken: boolean; maskedToken?: string }> =>
+      ipcRenderer.invoke('escavador:get-token'),
+
+    /** Delete stored Bearer token */
+    deleteToken: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('escavador:delete-token'),
+
+    /** Search by CNJ process number */
+    searchByCnj: (numeroCnj: string): Promise<{
+      success: boolean;
+      result?: import('@accomplish/shared').EscavadorProcessoResponse;
+      error?: string;
+    }> => ipcRenderer.invoke('escavador:search-by-cnj', numeroCnj),
+
+    /** Search by party name, CPF, or CNPJ */
+    searchByEnvolvido: (params: {
+      nome?: string;
+      cpf?: string;
+      cnpj?: string;
+      tribunais?: string[];
+    }): Promise<{
+      success: boolean;
+      result?: import('@accomplish/shared').EscavadorEnvolvidoResponse;
+      error?: string;
+    }> => ipcRenderer.invoke('escavador:search-by-envolvido', params),
+
+    /** Search by OAB (lawyer registration) */
+    searchByOab: (uf: string, numero: string): Promise<{
+      success: boolean;
+      result?: import('@accomplish/shared').EscavadorOabResponse;
+      error?: string;
+    }> => ipcRenderer.invoke('escavador:search-by-oab', uf, numero),
+
+    /** Get account credits */
+    getCredits: (): Promise<{
+      success: boolean;
+      result?: { available: number; used: number };
+      error?: string;
+    }> => ipcRenderer.invoke('escavador:get-credits'),
+
+    /** Get search history */
+    getHistory: (limit?: number): Promise<Array<{
+      id: number;
+      searchType: string;
+      queryValue: string;
+      resultCount: number;
+      creditsUsed: number | null;
+      createdAt: number;
+    }>> => ipcRenderer.invoke('escavador:get-history', limit),
   },
 };
 

@@ -270,6 +270,14 @@ interface JurisiarAPI {
     clearToken(): Promise<{ success: boolean }>;
     /** Check if authentication token exists */
     hasToken(): Promise<boolean>;
+
+    // Better Auth Methods (Cloudflare Worker)
+    /** Sign in with email and password via Better Auth */
+    signIn(credentials: { email: string; password: string }): Promise<unknown>;
+    /** Sign out via Better Auth */
+    signOut(): Promise<void>;
+    /** Get current session from Better Auth */
+    getSession(): Promise<unknown>;
   };
 
   // AIDEV-NOTE: datajud e tokenUsage são adicionados via IPC handlers separados (datajud-handlers, token-usage-handlers)
