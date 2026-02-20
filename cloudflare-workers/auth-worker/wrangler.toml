@@ -1,0 +1,15 @@
+name = "openwork-auth"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# AIDEV-NOTE: nodejs_compat é OBRIGATÓRIO — Better Auth usa AsyncLocalStorage
+
+[[hyperdrive]]
+binding = "DB_HYPERDRIVE"
+id = "SEU_HYPERDRIVE_ID"
+# Configurar no dashboard: Workers & Pages > Hyperdrive > Create
+# Aponta para seu PostgreSQL existente
+
+[vars]
+# Secrets via: wrangler secret put BETTER_AUTH_SECRET
