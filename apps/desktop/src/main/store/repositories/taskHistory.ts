@@ -2,6 +2,19 @@
 
 import type { Task, TaskMessage, TaskStatus, TaskAttachment } from '@accomplish/shared';
 import { getDatabase } from '../db';
+import { encryptValue, decryptValue } from '../secureStorage';
+
+// AIDEV-NOTE: Helpers para criptografar/decriptografar colunas sensiveis no SQLite
+// AIDEV-SECURITY: Prompt e conteudo de mensagens sao dados juridicos sensiveis
+function enc(text: string | null | undefined): string | null {
+  if (!text) return null;
+  return encryptValue(text);
+}
+
+function dec(val: string | null | undefined): string | null {
+  if (!val) return null;
+  return decryptValue(val) ?? val; // fallback: retorna como esta (dados antigos nao criptografados)
+}
 
 export interface StoredTask {
   id: string;
@@ -75,7 +88,7 @@ function getMessagesForTask(taskId: string): TaskMessage[] {
     messages.push({
       id: row.id,
       type: row.type as TaskMessage['type'],
-      content: row.content,
+      content: dec(row.content) || row.content,
       toolName: row.tool_name || undefined,
       toolInput: row.tool_input ? JSON.parse(row.tool_input) : undefined,
       timestamp: row.timestamp,
@@ -89,8 +102,8 @@ function getMessagesForTask(taskId: string): TaskMessage[] {
 function rowToTask(row: TaskRow): StoredTask {
   return {
     id: row.id,
-    prompt: row.prompt,
-    summary: row.summary || undefined,
+    prompt: dec(row.prompt) || row.prompt,
+    summary: dec(row.summary) || row.summary || undefined,
     status: row.status as TaskStatus,
     sessionId: row.session_id || undefined,
     createdAt: row.created_at,
@@ -122,15 +135,15 @@ export function saveTask(task: Task): void {
   const db = getDatabase();
 
   db.transaction(() => {
-    // Upsert task
+    // Upsert task — prompt e summary sao criptografados antes de salvar
     db.prepare(
       `INSERT OR REPLACE INTO tasks
         (id, prompt, summary, status, session_id, created_at, started_at, completed_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       task.id,
-      task.prompt,
-      task.summary || null,
+      enc(task.prompt),
+      enc(task.summary) || null,
       task.status,
       task.sessionId || null,
       task.createdAt,
@@ -158,7 +171,7 @@ export function saveTask(task: Task): void {
         msg.id,
         task.id,
         msg.type,
-        msg.content,
+        enc(msg.content),
         msg.toolName || null,
         msg.toolInput ? JSON.stringify(msg.toolInput) : null,
         msg.timestamp,
@@ -218,7 +231,7 @@ export function addTaskMessage(taskId: string, message: TaskMessage): void {
       message.id,
       taskId,
       message.type,
-      message.content,
+      enc(message.content),
       message.toolName || null,
       message.toolInput ? JSON.stringify(message.toolInput) : null,
       message.timestamp,
@@ -244,7 +257,7 @@ export function updateTaskSessionId(taskId: string, sessionId: string): void {
 
 export function updateTaskSummary(taskId: string, summary: string): void {
   const db = getDatabase();
-  db.prepare('UPDATE tasks SET summary = ? WHERE id = ?').run(summary, taskId);
+  db.prepare('UPDATE tasks SET summary = ? WHERE id = ?').run(enc(summary), taskId);
 }
 
 export function deleteTask(taskId: string): void {
