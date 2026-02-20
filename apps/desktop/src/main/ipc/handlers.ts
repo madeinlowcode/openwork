@@ -110,6 +110,11 @@ import {
   permissionResponseSchema,
   resumeSessionSchema,
   taskConfigSchema,
+  apiKeyStoreSchema,
+  apiKeyDeleteSchema,
+  apiKeySetSchema,
+  apiKeyValidateProviderSchema,
+  selectedModelSchema,
   validate,
 } from './validation';
 import { BedrockClient, ListFoundationModelsCommand } from '@aws-sdk/client-bedrock';
@@ -885,11 +890,12 @@ export function registerIPCHandlers(): void {
   handle(
     'settings:add-api-key',
     async (_event: IpcMainInvokeEvent, provider: string, key: string, label?: string) => {
-      if (!ALLOWED_API_KEY_PROVIDERS.has(provider)) {
+      const validated = validate(apiKeyStoreSchema, { provider, apiKey: key, label });
+      if (!ALLOWED_API_KEY_PROVIDERS.has(validated.provider)) {
         throw new Error('Unsupported API key provider');
       }
-      const sanitizedKey = sanitizeString(key, 'apiKey', 256);
-      const sanitizedLabel = label ? sanitizeString(label, 'label', 128) : undefined;
+      const sanitizedKey = sanitizeString(validated.apiKey, 'apiKey', 256);
+      const sanitizedLabel = validated.label ? sanitizeString(validated.label, 'label', 128) : undefined;
 
       // Store the API key securely in OS keychain
       await storeApiKey(provider, sanitizedKey);
@@ -907,8 +913,9 @@ export function registerIPCHandlers(): void {
 
   // Settings: Remove API key
   handle('settings:remove-api-key', async (_event: IpcMainInvokeEvent, id: string) => {
+    const validated = validate(apiKeyDeleteSchema, { id });
     // Extract provider from id (format: local-{provider})
-    const sanitizedId = sanitizeString(id, 'id', 128);
+    const sanitizedId = sanitizeString(validated.id, 'id', 128);
     const provider = sanitizedId.replace('local-', '');
     await deleteApiKey(provider);
   });
@@ -921,7 +928,8 @@ export function registerIPCHandlers(): void {
 
   // API Key: Set API key
   handle('api-key:set', async (_event: IpcMainInvokeEvent, key: string) => {
-    const sanitizedKey = sanitizeString(key, 'apiKey', 256);
+    const validated = validate(apiKeySetSchema, { key });
+    const sanitizedKey = sanitizeString(validated.key, 'apiKey', 256);
     await storeApiKey('anthropic', sanitizedKey);
     console.log('[API Key] Key set', { keyPrefix: sanitizedKey.substring(0, 8) });
   });
@@ -933,7 +941,8 @@ export function registerIPCHandlers(): void {
 
   // API Key: Validate API key by making a test request
   handle('api-key:validate', async (_event: IpcMainInvokeEvent, key: string) => {
-    const sanitizedKey = sanitizeString(key, 'apiKey', 256);
+    const validated = validate(apiKeySetSchema, { key });
+    const sanitizedKey = sanitizeString(validated.key, 'apiKey', 256);
     console.log('[API Key] Validation requested');
 
     try {
@@ -978,7 +987,8 @@ export function registerIPCHandlers(): void {
 
   // API Key: Validate API key for any provider
   handle('api-key:validate-provider', async (_event: IpcMainInvokeEvent, provider: string, key: string, options?: Record<string, any>) => {
-    if (!ALLOWED_API_KEY_PROVIDERS.has(provider)) {
+    const validated = validate(apiKeyValidateProviderSchema, { provider, key, options });
+    if (!ALLOWED_API_KEY_PROVIDERS.has(validated.provider)) {
       return { valid: false, error: 'Unsupported provider' };
     }
 
@@ -1445,10 +1455,8 @@ export function registerIPCHandlers(): void {
 
   // Model: Set selected model
   handle('model:set', async (_event: IpcMainInvokeEvent, model: SelectedModel) => {
-    if (!model || typeof model.provider !== 'string' || typeof model.model !== 'string') {
-      throw new Error('Invalid model configuration');
-    }
-    setSelectedModel(model);
+    const validated = validate(selectedModelSchema, model);
+    setSelectedModel(validated as SelectedModel);
   });
 
   // Ollama: Test connection and get models

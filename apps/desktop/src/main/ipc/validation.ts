@@ -27,6 +27,40 @@ export const resumeSessionSchema = z.object({
   chrome: z.boolean().optional(),
 });
 
+// AIDEV-NOTE: Providers must match ALLOWED_API_KEY_PROVIDERS in handlers.ts
+export const ALLOWED_PROVIDERS = [
+  'anthropic', 'openai', 'openrouter', 'google', 'xai',
+  'deepseek', 'moonshot', 'zai', 'azure-foundry', 'custom',
+  'bedrock', 'litellm', 'minimax', 'lmstudio', 'elevenlabs',
+] as const;
+
+export const apiKeyStoreSchema = z.object({
+  provider: z.enum(ALLOWED_PROVIDERS),
+  apiKey: z.string().min(1).max(500),
+  label: z.string().max(128).optional(),
+});
+
+export const apiKeyDeleteSchema = z.object({
+  id: z.string().min(1).max(128),
+});
+
+export const apiKeySetSchema = z.object({
+  key: z.string().min(1).max(500),
+});
+
+export const apiKeyValidateProviderSchema = z.object({
+  provider: z.enum(ALLOWED_PROVIDERS),
+  key: z.string().min(1).max(500),
+  options: z.record(z.any()).optional(),
+});
+
+export const selectedModelSchema = z.object({
+  provider: z.string().min(1).max(50),
+  model: z.string().min(1).max(200),
+  baseUrl: z.string().url().max(500).optional(),
+  deploymentName: z.string().max(200).optional(),
+});
+
 export function validate<TSchema extends z.ZodTypeAny>(
   schema: TSchema,
   payload: unknown
