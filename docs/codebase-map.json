@@ -1,0 +1,143 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-02-20T00:00:00.000Z",
+  "projectName": "openwork",
+  "description": "Desktop automation assistant built with Electron + React + Vite. Includes DataJud module for Brazilian judicial process search.",
+  "stack": {
+    "primaryLanguage": "TypeScript",
+    "languages": ["TypeScript", "JavaScript", "CSS", "HTML"],
+    "frameworks": ["Electron", "React", "Vite"],
+    "buildTools": ["Vite", "electron-builder"],
+    "testFrameworks": ["Playwright"],
+    "packageManager": "pnpm",
+    "isMonorepo": true,
+    "hasDocker": false,
+    "hasCI": false
+  },
+  "structure": {
+    "topDirectories": [
+      { "name": "apps/desktop", "purpose": "Electron desktop app (main/preload/renderer)", "children": ["src", "docs", "public"] },
+      { "name": "packages/shared", "purpose": "Shared TypeScript types", "children": ["src"] }
+    ]
+  },
+  "architecture": {
+    "layers": [
+      { "name": "Main Process", "directories": ["apps/desktop/src/main"], "responsibilities": "Electron bootstrap, IPC handlers, services, SQLite, keytar" },
+      { "name": "Preload", "directories": ["apps/desktop/src/preload"], "responsibilities": "contextBridge exposing window.jurisiar API" },
+      { "name": "Renderer", "directories": ["apps/desktop/src/renderer"], "responsibilities": "React UI, pages, components, stores, i18n" },
+      { "name": "Shared Types", "directories": ["packages/shared/src/types"], "responsibilities": "TypeScript type definitions shared across layers" }
+    ],
+    "patterns": ["IPC via contextBridge", "Repository pattern (SQLite)", "Service layer", "Retry-before-fallback (RateLimitRetryManager)", "NDJSON stream parsing (StreamParser v5)"],
+    "entryPoints": [
+      { "file": "apps/desktop/src/main/index.ts", "purpose": "Electron main process entry" },
+      { "file": "apps/desktop/src/renderer/main.tsx", "purpose": "React renderer entry" }
+    ]
+  },
+  "opencode": {
+    "description": "OpenCode CLI integration layer: PTY spawning, stream parsing, retry/fallback, completion enforcement",
+    "files": {
+      "adapter": "apps/desktop/src/main/opencode/adapter.ts",
+      "streamParser": "apps/desktop/src/main/opencode/stream-parser.ts",
+      "completionEnforcer": "apps/desktop/src/main/opencode/completion/completion-enforcer.ts",
+      "configGenerator": "apps/desktop/src/main/opencode/config-generator.ts",
+      "retryManager": "apps/desktop/src/main/opencode/fallback/retry-manager.ts",
+      "fallbackIndex": "apps/desktop/src/main/opencode/fallback/index.ts",
+      "fallbackTypes": "apps/desktop/src/main/opencode/fallback/types.ts",
+      "contextGenerator": "apps/desktop/src/main/opencode/fallback/context-generator.ts"
+    },
+    "keyBehaviors": {
+      "streamParser": "v5: JSON.parse per line, strip \\r, flush extracts concatenated JSONs via } positions",
+      "ptyConfig": "cols: 30000 to prevent \\r\\n injection by PTY line wrapping",
+      "retryManager": "3 retries with exponential backoff (30s, 60s, 120s) + 10% jitter before fallback",
+      "completionEnforcer": "120s timeout, resetToolsUsed() preserves completion state during fallback"
+    }
+  },
+  "modules": {
+    "datajud": {
+      "description": "Brazilian judicial process search via DataJud API (CNJ)",
+      "files": {
+        "sharedTypes": "packages/shared/src/types/datajud.ts",
+        "service": "apps/desktop/src/main/services/datajud.ts",
+        "ipcHandlers": "apps/desktop/src/main/ipc/datajud-handlers.ts",
+        "preload": "apps/desktop/src/preload/index.ts",
+        "repository": "apps/desktop/src/main/store/repositories/datajudSearches.ts",
+        "redact": "apps/desktop/src/main/utils/datajud-redact.ts",
+        "hook": "apps/desktop/src/renderer/components/datajud/hooks/useDataJud.ts",
+        "queryForm": "apps/desktop/src/renderer/components/datajud/DataJudQueryForm.tsx",
+        "courtSelect": "apps/desktop/src/renderer/components/datajud/CourtSelect.tsx",
+        "results": "apps/desktop/src/renderer/components/datajud/DataJudResults.tsx",
+        "resultCard": "apps/desktop/src/renderer/components/datajud/DataJudResultCard.tsx",
+        "timeline": "apps/desktop/src/renderer/components/datajud/DataJudMovementTimeline.tsx",
+        "resultsRenderer": "apps/desktop/src/renderer/components/datajud/DataJudResultsRenderer.tsx",
+        "settings": "apps/desktop/src/renderer/components/settings/DataJudSettings.tsx",
+        "rendererTypes": "apps/desktop/src/renderer/components/datajud/types/index.ts",
+        "barrel": "apps/desktop/src/renderer/components/datajud/index.ts",
+        "localesPtBR": "apps/desktop/src/renderer/locales/pt-BR/datajud.json",
+        "localesEN": "apps/desktop/src/renderer/locales/en/datajud.json"
+      },
+      "ipcChannels": 20,
+      "searchTypes": ["number", "class", "party", "date_range", "classAndCourt"],
+      "courts": 91
+    },
+    "authentication": {
+      "description": "Better Auth integration for centralized user authentication and session management",
+      "files": {
+        "workerEntrypoint": "cloudflare-workers/auth-worker/src/index.ts",
+        "authClient": "apps/desktop/src/main/lib/auth-client.ts",
+        "ipcHandlers": "apps/desktop/src/main/ipc/auth-handlers.ts",
+        "preload": "apps/desktop/src/preload/index.ts",
+        "authGate": "apps/desktop/src/renderer/components/AuthGate.tsx",
+        "loginPage": "apps/desktop/src/renderer/pages/Login.tsx",
+        "sessionContext": "apps/desktop/src/renderer/contexts/SessionContext.tsx",
+        "usageReporter": "apps/desktop/src/main/services/usage-reporter.ts",
+        "sharedTypes": "packages/shared/src/types/escavador.ts"
+      },
+      "keyBehaviors": {
+        "authFlow": "Electron app -> fetch to Cloudflare Worker -> PBKDF2 hash + JWT session -> SQLite via Hyperdrive",
+        "passwordHashing": "PBKDF2 via Web Crypto, 100k iteracoes, SHA-256, salt 32 bytes, <5ms timeout compliance",
+        "sessionManagement": "JWT tokens in SQLite, refreshed per request, tracked for rate-limiting and token usage",
+        "cors": "Electron sends Origin header 'electron://' to bypass null CORS rejection"
+      },
+      "relatedMigrations": ["v008-sqlite-encryption.ts", "v009-escavador.ts"]
+    },
+    "security": {
+      "description": "Encryption at rest, secure storage, and data protection mechanisms",
+      "files": {
+        "encryption": "apps/desktop/src/main/lib/encryption.ts",
+        "migrations": ["apps/desktop/src/main/store/migrations/v008-sqlite-encryption.ts"],
+        "keyDerivation": "PBKDF2 from installation UUID via Web Crypto API"
+      },
+      "keyBehaviors": {
+        "encryptionAlgo": "XChaCha20-Poly1305 (authenticated encryption)",
+        "keySource": "Installation UUID derived via PBKDF2, 100k iterations, SHA-256",
+        "encryptedColumns": ["apiKey", "modelSettings", "sensitive task data in SQLite"]
+      }
+    }
+  },
+  "publicAPI": [
+    { "endpoint": "datajud:search-by-number", "method": "IPC", "file": "apps/desktop/src/main/ipc/datajud-handlers.ts", "purpose": "Search by NPU number" },
+    { "endpoint": "datajud:search-by-class", "method": "IPC", "file": "apps/desktop/src/main/ipc/datajud-handlers.ts", "purpose": "Search by procedural class" },
+    { "endpoint": "datajud:search-by-party", "method": "IPC", "file": "apps/desktop/src/main/ipc/datajud-handlers.ts", "purpose": "Search by party name" },
+    { "endpoint": "datajud:search-by-date-range", "method": "IPC", "file": "apps/desktop/src/main/ipc/datajud-handlers.ts", "purpose": "Search by date range" },
+    { "endpoint": "datajud:search-by-class-and-court", "method": "IPC", "file": "apps/desktop/src/main/ipc/datajud-handlers.ts", "purpose": "Search by class + court organ with search_after pagination (Example 3)" },
+    { "endpoint": "auth:login", "method": "IPC", "file": "apps/desktop/src/main/ipc/auth-handlers.ts", "purpose": "Authenticate user via Cloudflare Worker" },
+    { "endpoint": "auth:logout", "method": "IPC", "file": "apps/desktop/src/main/ipc/auth-handlers.ts", "purpose": "Clear session and logout user" },
+    { "endpoint": "auth:check-session", "method": "IPC", "file": "apps/desktop/src/main/ipc/auth-handlers.ts", "purpose": "Verify current session validity" },
+    { "endpoint": "auth-worker", "method": "HTTPS", "file": "cloudflare-workers/auth-worker/src/index.ts", "purpose": "Better Auth backend on Cloudflare Workers with PBKDF2 hashing and JWT sessions" }
+  ],
+  "stats": {
+    "datajudIpcChannels": 20,
+    "datajudSearchTypes": 5,
+    "datajudCourts": 91,
+    "authIpcChannels": 3,
+    "totalIpcChannels": 23,
+    "encryptedColumns": ["apiKey", "modelSettings", "sensitive task data"],
+    "migrations": 9
+  },
+  "externalServices": [
+    { "service": "Cloudflare Workers", "purpose": "Better Auth backend, PBKDF2 hashing, JWT session management", "endpoint": "https://auth-worker.<account>.workers.dev" },
+    { "service": "Cloudflare Hyperdrive", "purpose": "SQLite database connection from Workers", "config": "env.HYPERDRIVE" },
+    { "service": "DataJud API", "purpose": "Brazilian judicial process search", "endpoint": "https://www.cnj.jus.br/datajud" },
+    { "service": "OpenCode CLI", "purpose": "LLM code execution via PTY spawning", "versions": ["1.0.0"] }
+  ]
+}

@@ -34,6 +34,7 @@ packages/shared/  # Shared TypeScript types
 **Main Process** (`main/`):
 - `index.ts` - Electron bootstrap, single-instance enforcement, `accomplish://` protocol handler
 - `ipc/handlers.ts` - IPC handlers for task lifecycle, settings, onboarding, API keys
+- `lib/auth-client.ts` - Better Auth client (session management, Origin fix)
 - `opencode/adapter.ts` - OpenCode CLI wrapper using `node-pty`, streams output and handles permissions
 - `store/secureStorage.ts` - API key storage via `keytar` (OS keychain)
 - `store/db.ts` - SQLite database connection (better-sqlite3)
@@ -47,7 +48,9 @@ packages/shared/  # Shared TypeScript types
 **Renderer** (`renderer/`):
 - `main.tsx` - React entry with HashRouter
 - `App.tsx` - Main routing + onboarding gate
+- `components/AuthGate.tsx` - Route protection gate
 - `pages/` - Home, Execution, History, Settings pages
+- `pages/Login.tsx` - Authentication page
 - `stores/taskStore.ts` - Zustand store for task/UI state
 - `lib/accomplish.ts` - Typed wrapper for the IPC API
 
@@ -64,6 +67,24 @@ Preload
     ↑ ipcRenderer.on callbacks
 Renderer
 ```
+
+### OpenCode Integration (`main/opencode/`)
+
+**Stream Parsing** (`stream-parser.ts`):
+- StreamParser v5: `JSON.parse` on each `\n`-delimited line (no state machine)
+- Strips all `\r` characters (PTY on Windows inserts them for line wrapping)
+- Flush on process exit: extracts concatenated JSONs by testing `}` positions left-to-right
+- PTY spawned with `cols: 30000` to prevent `\r\n` injection from line wrapping
+
+**Retry & Fallback** (`fallback/`):
+- `retry-manager.ts` - RateLimitRetryManager: 3 retries with exponential backoff (30s, 60s, 120s) + 10% jitter
+- Rate limit handling is 2-phase: (1) retry with same model/session via `spawnSessionResumption()`, (2) only if retries exhausted, fallback to alternate model via FallbackEngine
+- `context-generator.ts` - Generates continuation context including truncated tool outputs (300 chars), modified files, TODOs/FIXMEs
+- `adapter.ts` - `handleRateLimitWithFallback()` orchestrates the 2-phase flow
+
+**Completion Enforcement** (`completion/completion-enforcer.ts`):
+- Timeout: 120s (increased from 30s)
+- `resetToolsUsed()` method preserves completion state during fallback (vs `reset()` which clears everything)
 
 ### Key Dependencies
 - `node-pty` - PTY for OpenCode CLI spawning
@@ -161,6 +182,41 @@ environment: {
 - API key validation via test request to respective provider API
 - OpenCode CLI permissions are bridged to UI via IPC `permission:request` / `permission:respond`
 - Task output streams through `task:update` and `task:progress` IPC events
+
+## Authentication (Better Auth)
+
+The app uses Better Auth for user authentication via a Cloudflare Worker backend.
+
+### Architecture
+```
+Renderer (Login.tsx) → IPC (auth:sign-in) → Main (auth-client.ts) → Cloudflare Worker → PostgreSQL
+```
+
+### Key Files
+- `cloudflare-workers/auth-worker/` - Hono + Better Auth server (Cloudflare Workers)
+- `apps/desktop/src/main/lib/auth-client.ts` - Better Auth client for main process
+- `apps/desktop/src/renderer/components/AuthGate.tsx` - Route protection (redirects to /login)
+- `apps/desktop/src/renderer/pages/Login.tsx` - Login form
+- `apps/desktop/src/main/services/usage-reporter.ts` - Token usage reporting to backend
+
+### Critical Notes
+- `authClient.setupMain()` must be called BEFORE `app.whenReady()` (protocol registration)
+- Electron main process sends `Origin: null` — auth-client sets `Origin: app://openwork` via fetchOptions
+- Worker uses PBKDF2 (100k iterations, SHA-256) for password hashing — scrypt/bcrypt exceed Workers Free CPU limit
+- Better Auth requires camelCase column names and TEXT primary keys in PostgreSQL
+- `@better-auth/electron` plugin is CLIENT-ONLY — never import on the Worker server
+
+### Auth IPC Handlers
+- `auth:sign-in` - Email/password login
+- `auth:sign-out` - Sign out
+- `auth:get-session` - Get current session
+
+### Worker Deployment
+```bash
+cd cloudflare-workers/auth-worker
+npx wrangler deploy
+npx wrangler tail --format json  # Live logs
+```
 
 ## SQLite Storage
 
