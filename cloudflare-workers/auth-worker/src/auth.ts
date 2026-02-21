@@ -37,6 +37,23 @@ async function hashPassword(password: string): Promise<string> {
   return `pbkdf2:${PBKDF2_ITERATIONS}:${saltHex}:${hashHex}`;
 }
 
+// AIDEV-NOTE: Constant-time comparison para prevenir timing attacks
+// Usa XOR de bytes para garantir tempo constante independente do match
+function timingSafeEqual(a: string, b: string): boolean {
+  const aBytes = new Uint8Array(a.length);
+  const bBytes = new Uint8Array(b.length);
+  for (let i = 0; i < a.length; i++) aBytes[i] = a.charCodeAt(i);
+  for (let i = 0; i < b.length; i++) bBytes[i] = b.charCodeAt(i);
+
+  let result = 0;
+  for (let i = 0; i < Math.max(aBytes.length, bBytes.length); i++) {
+    const aByte = i < aBytes.length ? aBytes[i] : 0;
+    const bByte = i < bBytes.length ? bBytes[i] : 0;
+    result |= aByte ^ bByte;
+  }
+  return result === 0;
+}
+
 async function verifyPassword(data: { password: string; hash: string }): Promise<boolean> {
   const parts = data.hash.split(':');
   if (parts[0] !== 'pbkdf2' || parts.length !== 4) return false;
@@ -52,7 +69,8 @@ async function verifyPassword(data: { password: string; hash: string }): Promise
     key, 256
   );
   const computedHash = [...new Uint8Array(derived)].map(b => b.toString(16).padStart(2, '0')).join('');
-  return computedHash === storedHash;
+  // AIDEV-NOTE: timingSafeEqual previne timing attacks - tempo constante de comparação
+  return timingSafeEqual(computedHash, storedHash);
 }
 
 export function createAuth(env: { DATABASE_URL: string; BETTER_AUTH_SECRET: string }) {

@@ -13,6 +13,8 @@ import { encryptValue } from '../secureStorage';
 function isAlreadyEncrypted(value: string): boolean {
   const parts = value.split(':');
   if (parts.length !== 3) return false;
+  // IV = 12 bytes = 16+ base64 chars, authTag = 16 bytes = 24+ chars, ciphertext >= 4 chars
+  if (parts[0].length < 16 || parts[1].length < 24 || parts[2].length < 4) return false;
   return parts.every((p) => /^[A-Za-z0-9+/=]+$/.test(p));
 }
 

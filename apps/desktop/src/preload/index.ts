@@ -489,6 +489,21 @@ const jurisiarAPI = {
     /** Get current session from Better Auth */
     getSession: (): Promise<unknown> =>
       ipcRenderer.invoke('auth:get-session'),
+
+    /** Get local cached session (offline mode) - no network call */
+    getLocalSession: (): Promise<unknown> =>
+      ipcRenderer.invoke('auth:get-local-session'),
+  },
+
+  // ============================================================================
+  // User API
+  // ============================================================================
+  // AIDEV-NOTE: Exposes user account data to renderer (usage, plan, etc.)
+
+  user: {
+    /** Get current usage data (plan, tasks used/limit) */
+    getUsage: (): Promise<unknown> =>
+      ipcRenderer.invoke('user:get-usage'),
   },
 
   // ============================================================================

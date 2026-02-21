@@ -278,6 +278,13 @@ interface JurisiarAPI {
     signOut(): Promise<void>;
     /** Get current session from Better Auth */
     getSession(): Promise<unknown>;
+    /** Get local cached session (offline mode) - no network call */
+    getLocalSession(): Promise<unknown>;
+  };
+
+  /** User account API (usage, plan) */
+  user?: {
+    getUsage(): Promise<unknown>;
   };
 
   // AIDEV-NOTE: datajud e tokenUsage são adicionados via IPC handlers separados (datajud-handlers, token-usage-handlers)

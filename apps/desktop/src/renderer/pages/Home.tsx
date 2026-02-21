@@ -31,6 +31,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import TaskInputBar from '../components/landing/TaskInputBar';
 import SettingsDialog from '../components/layout/SettingsDialog';
 import { DataJudQueryForm, DataJudResults } from '../components/datajud';
+import type { DataJudClassAndCourtSearchMeta } from '../components/datajud/types';
+import { EscavadorQueryForm, EscavadorResults } from '../components/escavador';
+import type { EscavadorSearchType } from '../components/escavador/types';
 import { useTaskStore } from '../stores/taskStore';
 import { getJurisiar } from '../lib/jurisiar';
 import { springs, staggerContainer, staggerItem } from '../lib/animations';
@@ -47,9 +50,11 @@ import {
   FileSearch,
   FileOutput,
   Database,
+  Search,
   type LucideIcon,
 } from 'lucide-react';
 import { hasAnyReadyProvider } from '@accomplish/shared';
+import { UsageMeter } from '../components/UsageMeter';
 
 /**
  * @description Configuracao dos casos de uso juridicos exibidos na Home
@@ -70,6 +75,8 @@ const USE_CASE_KEYS: ReadonlyArray<{ key: string; icon: LucideIcon }> = [
   { key: 'extrairClausulas', icon: FileOutput },
   // DataJud - card unico que abre dialog com tipos de consulta
   { key: 'dataJud', icon: Database },
+  // Escavador - card unico que abre dialog com tipos de consulta
+  { key: 'escavador', icon: Search },
 ];
 
 export default function HomePage() {
@@ -83,6 +90,16 @@ export default function HomePage() {
   // AIDEV-NOTE: Estados para resultados do DataJud
   const [dataJudResults, setDataJudResults] = useState<any | null>(null);
   const [showDataJudResults, setShowDataJudResults] = useState(false);
+  // AIDEV-NOTE: Armazena parametros da ultima busca classAndCourt para paginacao search_after
+  const [lastClassAndCourtParams, setLastClassAndCourtParams] = useState<{
+    court: string; classCode: string; orgaoCode: string; size: number;
+  } | null>(null);
+  // AIDEV-NOTE: Estados para o modal do formulario Escavador
+  const [showEscavadorForm, setShowEscavadorForm] = useState(false);
+  // AIDEV-NOTE: Estados para resultados do Escavador
+  const [escavadorResults, setEscavadorResults] = useState<any | null>(null);
+  const [showEscavadorResults, setShowEscavadorResults] = useState(false);
+  const [escavadorSearchType, setEscavadorSearchType] = useState<EscavadorSearchType>('cnj');
   const { startTask, isLoading, addTaskUpdate, setPermissionRequest } = useTaskStore();
   const navigate = useNavigate();
   const jurisiar = getJurisiar();
@@ -163,10 +180,30 @@ export default function HomePage() {
   };
 
   /**
+   * AIDEV-NOTE: Abre o dialog Escavador com tabs de selecao
+   */
+  const handleEscavadorClick = () => {
+    setShowEscavadorForm(true);
+  };
+
+  /**
    * AIDEV-NOTE: Callback executado quando a busca DataJud retorna resultados via IPC
    * AIDEV-WARNING: Recebe dados brutos da API, nao mais prompt
    */
-  const handleDataJudResult = useCallback((data: any) => {
+  // AIDEV-NOTE: data tipado como Record com _searchMeta opcional tipado
+  const handleDataJudResult = useCallback((data: Record<string, unknown> & { _searchMeta?: DataJudClassAndCourtSearchMeta }) => {
+    // AIDEV-NOTE: Extrai metadata de busca classAndCourt para suportar paginacao
+    if (data?._searchMeta?.type === 'classAndCourt') {
+      const meta = data._searchMeta;
+      setLastClassAndCourtParams({
+        court: meta.court,
+        classCode: meta.classCode,
+        orgaoCode: meta.orgaoCode,
+        size: meta.size,
+      });
+    } else {
+      setLastClassAndCourtParams(null);
+    }
     setDataJudResults(data);
     setShowDataJudResults(true);
   }, []);
@@ -174,10 +211,49 @@ export default function HomePage() {
   /**
    * AIDEV-NOTE: Fecha resultados e reabre formulario de busca
    */
+  /**
+   * AIDEV-NOTE: Carrega mais resultados via search_after para classAndCourt
+   * Retorna os dados da proxima pagina para acumular no DataJudResults
+   */
+  const handleLoadMore = useCallback(async (searchAfter: string[]) => {
+    if (!lastClassAndCourtParams) return null;
+    const datajud = (window as any).jurisiar?.datajud;
+    if (!datajud) return null;
+
+    const { court, classCode, orgaoCode, size } = lastClassAndCourtParams;
+    const result = await datajud.searchByClassAndCourt(court, classCode, orgaoCode, {
+      size,
+      searchAfter,
+    });
+
+    if (result.success && result.result) {
+      return result.result;
+    }
+    return null;
+  }, [lastClassAndCourtParams]);
+
   const handleNewSearch = useCallback(() => {
     setShowDataJudResults(false);
     setDataJudResults(null);
+    setLastClassAndCourtParams(null);
     setShowDataJudForm(true);
+  }, []);
+
+  /**
+   * AIDEV-NOTE: Callback executado quando a busca Escavador retorna resultados
+   */
+  const handleEscavadorResult = useCallback((data: any) => {
+    setEscavadorResults(data);
+    setShowEscavadorResults(true);
+  }, []);
+
+  /**
+   * AIDEV-NOTE: Fecha resultados Escavador e reabre formulario
+   */
+  const handleEscavadorNewSearch = useCallback(() => {
+    setShowEscavadorResults(false);
+    setEscavadorResults(null);
+    setShowEscavadorForm(true);
   }, []);
 
   return (
@@ -195,6 +271,23 @@ export default function HomePage() {
         onOpenChange={setShowDataJudResults}
         data={dataJudResults}
         onNewSearch={handleNewSearch}
+        onLoadMore={lastClassAndCourtParams ? handleLoadMore : undefined}
+      />
+
+      {/* AIDEV-NOTE: Dialog do formulario Escavador */}
+      <EscavadorQueryForm
+        open={showEscavadorForm}
+        onOpenChange={setShowEscavadorForm}
+        onResult={handleEscavadorResult}
+      />
+
+      {/* AIDEV-NOTE: Dialog de resultados Escavador */}
+      <EscavadorResults
+        open={showEscavadorResults}
+        onOpenChange={setShowEscavadorResults}
+        searchType={escavadorSearchType}
+        data={escavadorResults}
+        onNewSearch={handleEscavadorNewSearch}
       />
 
       <SettingsDialog
@@ -239,6 +332,11 @@ export default function HomePage() {
               />
             </CardContent>
 
+            {/* Usage Meter */}
+            <div className="px-6 pb-2">
+              <UsageMeter />
+            </div>
+
             {/* Examples Toggle */}
             <div className="border-t border-border">
               <button
@@ -281,8 +379,12 @@ export default function HomePage() {
                           const IconComponent = useCase.icon;
                           // AIDEV-NOTE: Card DataJud abre dialog dedicado
                           const isDataJud = useCase.key === 'dataJud';
+                          // AIDEV-NOTE: Card Escavador abre dialog dedicado
+                          const isEscavador = useCase.key === 'escavador';
                           const handleClick = isDataJud
                             ? handleDataJudClick
+                            : isEscavador
+                            ? handleEscavadorClick
                             : () => handleExampleClick(t(`useCases.${useCase.key}.prompt`));
 
                           return (

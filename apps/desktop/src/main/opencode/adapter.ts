@@ -12,6 +12,7 @@ import {
 } from './cli-path';
 import { getAllApiKeys, getBedrockCredentials } from '../store/secureStorage';
 import { authClient, WORKER_URL } from '../lib/auth-client';
+import { getSignedHeaders } from '../lib/request-signer';
 // TODO: Remove getAzureFoundryConfig import in v0.4.0 when legacy support is dropped
 import { getSelectedModel, getAzureFoundryConfig, getOpenAiBaseUrl } from '../store/appSettings';
 import { getActiveProviderModel, getConnectedProvider } from '../store/providerSettings';
@@ -680,16 +681,19 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
 
         if (token) {
           // Chamar endpoint de autorização no Worker
+          const authorizeBody = JSON.stringify({
+            taskId: config.taskId || 'unknown',
+            estimatedTokens: 50000, // Estimativa padrão
+          });
           const authResponse = await fetch(`${WORKER_URL}/api/task/authorize`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
+              // AIDEV-SECURITY: HMAC signing para validacao de integridade no Worker
+              ...getSignedHeaders(authorizeBody),
             },
-            body: JSON.stringify({
-              taskId: config.taskId || 'unknown',
-              estimatedTokens: 50000, // Estimativa padrão
-            }),
+            body: authorizeBody,
           });
 
           const authData = await authResponse.json();

@@ -18,6 +18,7 @@
  */
 
 import { authClient, WORKER_URL } from '../lib/auth-client';
+import { getSignedHeaders } from '../lib/request-signer';
 
 export interface UsageReportData {
   taskId: string;
@@ -43,10 +44,21 @@ export function reportUsageAsync(data: UsageReportData): void {
     .getSession()
     .then((session) => {
       if (!session?.data) return;
+      // AIDEV-NOTE: Estrutura do session do better-auth - usa type assertion
+      const sessionData = session.data as { session?: { token?: string }; accessToken?: string };
+      const token = sessionData.session?.token || sessionData.accessToken;
+      if (!token) return;
+      const bodyStr = JSON.stringify(data);
       fetch(`${WORKER_URL}/usage/record`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+          // AIDEV-SECURITY: Authorization header obrigatório para validar sessão no worker
+          Authorization: `Bearer ${token}`,
+          // AIDEV-SECURITY: HMAC signing para validacao de integridade no Worker
+          ...getSignedHeaders(bodyStr),
+        },
+        body: bodyStr,
       }).catch(() => {
         // AIDEV-NOTE: Silenciar erros de rede — fire-and-forget
       });

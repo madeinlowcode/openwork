@@ -79,3 +79,40 @@ export function normalizeIpcError(error: unknown): Error {
   }
   return new Error(typeof error === 'string' ? error : 'Unknown IPC error');
 }
+
+// ============================================================================
+// Auth Token Schema
+// ============================================================================
+
+/**
+ * Schema para validacao de token de autenticacao armazenado
+ * 🔒 AIDEV-SECURITY: Limita tamanho dos tokens para prevenir abuse
+ */
+export const authStoreTokenSchema = z.object({
+  accessToken: z.string().min(1).max(4096),
+  refreshToken: z.string().min(1).max(4096),
+  expiresAt: z.number().optional(),
+});
+
+// ============================================================================
+// Auth Schemas (VULN-004)
+// ============================================================================
+
+/**
+ * Schema para validação de credenciais de login
+ * 🔒 AIDEV-SECURITY: Validação rigorosa de inputs
+ */
+export const authSignInSchema = z.object({
+  email: z.string().email('Invalid email format').max(255),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+});
+
+/**
+ * Schema para validação de dados de usuário
+ * 🔒 AIDEV-SECURITY: Validação rigorosa de inputs
+ */
+export const authSignUpSchema = z.object({
+  email: z.string().email('Invalid email format').max(255),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+  name: z.string().min(1, 'Name is required').max(255).optional(),
+});

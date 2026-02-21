@@ -115,6 +115,7 @@ import {
   apiKeySetSchema,
   apiKeyValidateProviderSchema,
   selectedModelSchema,
+  authStoreTokenSchema,
   validate,
 } from './validation';
 import { BedrockClient, ListFoundationModelsCommand } from '@aws-sdk/client-bedrock';
@@ -128,6 +129,7 @@ import {
 import { registerDataJudHandlers } from './datajud-handlers';
 import { registerEscavadorHandlers } from './escavador-handlers';
 import { registerTokenUsageHandlers } from './token-usage-handlers';
+import { authSignInSchema, authSignUpSchema } from './validation';
 
 const MAX_TEXT_LENGTH = 8000;
 const ALLOWED_API_KEY_PROVIDERS = new Set(['anthropic', 'openai', 'openrouter', 'google', 'xai', 'deepseek', 'moonshot', 'zai', 'azure-foundry', 'custom', 'bedrock', 'litellm', 'minimax', 'lmstudio', 'elevenlabs']);
@@ -830,39 +832,21 @@ export function registerIPCHandlers(): void {
   // Settings: Get API keys
   // Note: In production, this should fetch from backend to get metadata
   // The actual keys are stored locally in secure storage
+  // AIDEV-NOTE: VULN-008 - agora retorna apenas providers, não expõe senhas
   handle('settings:api-keys', async (_event: IpcMainInvokeEvent) => {
     const storedCredentials = await listStoredCredentials();
 
+    // AIDEV-SECURITY: Apenas lista providers com chaves, sem expor valores
     const keys = storedCredentials
-      .filter((credential) => credential.account.startsWith('apiKey:'))
-      .map((credential) => {
-        const provider = credential.account.replace('apiKey:', '');
-
-        // Handle Bedrock specially - it stores JSON credentials
-        let keyPrefix = '';
-        if (provider === 'bedrock') {
-          try {
-            const parsed = JSON.parse(credential.password);
-            if (parsed.authType === 'accessKeys') {
-              keyPrefix = `${parsed.accessKeyId?.substring(0, 8) || 'AKIA'}...`;
-            } else if (parsed.authType === 'profile') {
-              keyPrefix = `Profile: ${parsed.profileName || 'default'}`;
-            }
-          } catch {
-            keyPrefix = 'AWS Credentials';
-          }
-        } else {
-          keyPrefix =
-            credential.password && credential.password.length > 0
-              ? `${credential.password.substring(0, 8)}...`
-              : '';
-        }
+      .filter((key) => key.startsWith('apiKey:'))
+      .map((key) => {
+        const provider = key.replace('apiKey:', '');
 
         return {
           id: `local-${provider}`,
           provider,
           label: provider === 'bedrock' ? 'AWS Credentials' : 'Local API Key',
-          keyPrefix,
+          keyPrefix: '********', // Não expõe prefixo de senha por segurança
           isActive: true,
           createdAt: new Date().toISOString(),
         };
@@ -2632,10 +2616,11 @@ export function registerIPCHandlers(): void {
   // AIDEV-WARNING: Token is encrypted before storage - never log the token value
   handle('auth:store-token', async (
     _event: IpcMainInvokeEvent,
-    token: { accessToken: string; refreshToken: string; expiresAt?: number }
+    token: unknown
   ) => {
+    const validated = validate(authStoreTokenSchema, token);
     const { storeAuthToken } = await import('../store/secureStorage');
-    storeAuthToken(token);
+    storeAuthToken(validated);
     return { success: true };
   });
 
@@ -2666,18 +2651,46 @@ export function registerIPCHandlers(): void {
   // AIDEV-WARNING: authClient gerencia sessao internamente — nao expor tokens
   // AIDEV-SECURITY: signIn retorna sessao, nao tokens raw
 
+  // AIDEV-NOTE: VULN-004 - Validacao Zod de credenciais antes de enviar ao servidor
   handle('auth:sign-in', async (
     _event: IpcMainInvokeEvent,
     credentials: { email: string; password: string }
   ) => {
-    const { authClient } = await import('../lib/auth-client');
-    const result = await authClient.signIn.email(credentials);
+    // AIDEV-SECURITY: Validar inputs com Zod antes de processar
+    const validated = validate(authSignInSchema, credentials);
+    const { authClient, startSessionRefresh } = await import('../lib/auth-client');
+    const result = await authClient.signIn.email(validated);
     if (result.error) throw new Error(result.error.message ?? 'Authentication failed');
+    // AIDEV-NOTE: Iniciar refresh automático de sessão
+    startSessionRefresh();
+    return result.data;
+  });
+
+  // AIDEV-NOTE: VULN-004 - Validacao Zod de dados de cadastro
+  handle('auth:sign-up', async (
+    _event: IpcMainInvokeEvent,
+    userData: { email: string; password: string; name?: string }
+  ) => {
+    // AIDEV-SECURITY: Validar inputs com Zod antes de processar
+    const validated = validate(authSignUpSchema, userData);
+    const { authClient, startSessionRefresh } = await import('../lib/auth-client');
+    // AIDEV-NOTE: name deve ser string se presente - uso type assertion para garantir
+    const signUpData = {
+      email: validated.email,
+      password: validated.password,
+      name: (validated.name || '') as string,
+    };
+    const result = await authClient.signUp.email(signUpData);
+    if (result.error) throw new Error(result.error.message ?? 'Registration failed');
+    // AIDEV-NOTE: Iniciar refresh automático de sessão
+    startSessionRefresh();
     return result.data;
   });
 
   handle('auth:sign-out', async () => {
-    const { authClient } = await import('../lib/auth-client');
+    const { authClient, stopSessionRefresh } = await import('../lib/auth-client');
+    // AIDEV-NOTE: Parar refresh automático de sessão
+    stopSessionRefresh();
     await authClient.signOut();
   });
 
@@ -2685,6 +2698,45 @@ export function registerIPCHandlers(): void {
     const { authClient } = await import('../lib/auth-client');
     const session = await authClient.getSession();
     return session?.data ?? null;
+  });
+
+  // AIDEV-NOTE: Modo offline - retorna sessao cacheada localmente sem fazer chamada de rede
+  // Útil quando o servidor não está acessível mas o usuário já estava logado
+  handle('auth:get-local-session', async () => {
+    const { getAuthToken } = await import('../store/secureStorage');
+    const token = getAuthToken();
+    if (!token) return null;
+    // Retorna formato simplificado da sessão (apenas token, sem dados do usuário)
+    // O renderer pode usar isso para permitir acesso offline
+    return {
+      accessToken: token.accessToken,
+      refreshToken: token.refreshToken,
+      expiresAt: token.expiresAt,
+    };
+  });
+
+  // ============================================================================
+  // User Usage Handler
+  // ============================================================================
+  // AIDEV-NOTE: Fetches user usage data from Worker /api/user/usage
+  // AIDEV-WARNING: Requires authenticated session — returns null if not authenticated
+
+  handle('user:get-usage', async () => {
+    try {
+      const { authClient, WORKER_URL } = await import('../lib/auth-client');
+      const session = await authClient.getSession();
+      if (!session?.data) return null;
+      const sessionData = session.data as { session?: { token?: string }; accessToken?: string };
+      const token = sessionData.session?.token || sessionData.accessToken;
+      if (!token) return null;
+      const response = await fetch(`${WORKER_URL}/api/user/usage`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
   });
 
   // ============================================================================
