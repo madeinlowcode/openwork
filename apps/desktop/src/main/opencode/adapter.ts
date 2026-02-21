@@ -11,6 +11,7 @@ import {
   getBundledOpenCodeVersion,
 } from './cli-path';
 import { getAllApiKeys, getBedrockCredentials } from '../store/secureStorage';
+import { authClient, WORKER_URL } from '../lib/auth-client';
 // TODO: Remove getAzureFoundryConfig import in v0.4.0 when legacy support is dropped
 import { getSelectedModel, getAzureFoundryConfig, getOpenAiBaseUrl } from '../store/appSettings';
 import { getActiveProviderModel, getConnectedProvider } from '../store/providerSettings';
@@ -664,6 +665,65 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     const cliInstalled = await isOpenCodeCliInstalled();
     if (!cliInstalled) {
       throw new OpenCodeCliNotFoundError();
+    }
+
+    // ================================================================
+    // TASK 25: Server-side authorization gate (FASE 5)
+    // ================================================================
+    // AIDEV-SECURITY: Verificar autorização com o servidor antes de executar task
+    // O servidor valida plano ativo e limites mensais
+    try {
+      const session = await authClient.getSession();
+      if (session?.data) {
+        const sessionData = session.data as { session?: { token?: string }; accessToken?: string };
+        const token = sessionData.session?.token || sessionData.accessToken;
+
+        if (token) {
+          // Chamar endpoint de autorização no Worker
+          const authResponse = await fetch(`${WORKER_URL}/api/task/authorize`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              taskId: config.taskId || 'unknown',
+              estimatedTokens: 50000, // Estimativa padrão
+            }),
+          });
+
+          const authData = await authResponse.json();
+
+          if (!authResponse.ok || !authData.authorized) {
+            // Emitir evento de autorização negada para o renderer
+            this.emit('error', new Error(
+              authData.error === 'Monthly limit exceeded'
+                ? 'Limite mensal de tarefas excedido. Faça upgrade do seu plano.'
+                : authData.error === 'License expired'
+                ? 'Sua licença expirou. Renove para continuar usando.'
+                : authData.error || 'Não autorizado a executar tarefas.'
+            ));
+            return {
+              id: config.taskId || this.generateTaskId(),
+              prompt: config.prompt,
+              status: 'failed',
+              messages: [],
+              createdAt: new Date().toISOString(),
+              startedAt: new Date().toISOString(),
+            };
+          }
+
+          console.log('[OpenCode Adapter] Task authorized:', {
+            plan: authData.plan,
+            remaining: authData.remaining,
+          });
+        }
+      }
+    } catch (authError) {
+      // Se falhar a verificação de auth (offline ou erro de rede),
+      // ainda permitimos executar - o servidor vai registrar uso
+      // e bloqueia se limite for excedido na próxima verificação
+      console.warn('[OpenCode Adapter] Task authorization check failed (allowing execution):', authError);
     }
 
     const taskId = config.taskId || this.generateTaskId();
@@ -1970,6 +2030,28 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
       }));
       tokenUsageRepo.saveBatch(records);
       console.log(`[OpenCode Adapter] Persisted ${records.length} token usage records for task ${taskId}`);
+
+      // AIDEV-NOTE: Report usage to remote server (fire-and-forget)
+      // Aggregate totals from all entries for this task
+      const totalInput = records.reduce((sum, r) => sum + r.inputTokens, 0);
+      const totalOutput = records.reduce((sum, r) => sum + r.outputTokens, 0);
+      const totalCost = records.reduce((sum, r) => sum + (r.costUsd ?? 0), 0);
+      const primaryModel = records[0]?.modelId ?? 'unknown';
+      const primaryProvider = records[0]?.provider ?? 'unknown';
+      import('../services/usage-reporter')
+        .then(({ reportUsageAsync }) => {
+          reportUsageAsync({
+            taskId,
+            modelId: primaryModel,
+            provider: primaryProvider,
+            inputTokens: totalInput,
+            outputTokens: totalOutput,
+            costUsd: totalCost > 0 ? totalCost : null,
+          });
+        })
+        .catch(() => {
+          // AIDEV-NOTE: Non-fatal — usage reporting is best-effort
+        });
     } catch (err) {
       console.error('[OpenCode Adapter] Failed to persist token data:', err);
     }

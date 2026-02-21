@@ -210,13 +210,13 @@ export function deleteApiKey(provider: string): boolean {
 /**
  * Supported API key providers
  */
-export type ApiKeyProvider = 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'moonshot' | 'zai' | 'custom' | 'bedrock' | 'litellm' | 'minimax' | 'datajud';
+export type ApiKeyProvider = 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'moonshot' | 'zai' | 'custom' | 'bedrock' | 'litellm' | 'minimax' | 'datajud' | 'escavador';
 
 /**
  * Get all API keys for all providers
  */
 export async function getAllApiKeys(): Promise<Record<ApiKeyProvider, string | null>> {
-  const [anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax, datajud] = await Promise.all([
+  const [anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax, datajud, escavador] = await Promise.all([
     getApiKey('anthropic'),
     getApiKey('openai'),
     getApiKey('openrouter'),
@@ -230,9 +230,10 @@ export async function getAllApiKeys(): Promise<Record<ApiKeyProvider, string | n
     getApiKey('litellm'),
     getApiKey('minimax'),
     getApiKey('datajud'),
+    getApiKey('escavador'),
   ]);
 
-  return { anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax, datajud };
+  return { anthropic, openai, openrouter, google, xai, deepseek, moonshot, zai, custom, bedrock, litellm, minimax, datajud, escavador };
 }
 
 /**
@@ -264,25 +265,28 @@ export async function hasAnyApiKey(): Promise<boolean> {
 }
 
 /**
- * List all stored credentials for this service
- * Returns key names with their (decrypted) values
+ * List all stored credential keys for this service
+ * 🔒 AIDEV-SECURITY: Retorna apenas nomes de chaves, NÃO valores descriptografados
+ * (VULN-008 - anterior retornava senhas em texto plano)
+ *
+ * @returns Array de nomes de chaves armazenadas (ex: "apiKey:anthropic")
  */
-export function listStoredCredentials(): Array<{ account: string; password: string }> {
+export function listStoredCredentials(): string[] {
   const store = getSecureStore();
   const values = store.get('values');
-  const credentials: Array<{ account: string; password: string }> = [];
+  return Object.keys(values);
+}
 
-  for (const key of Object.keys(values)) {
-    const decrypted = decryptValue(values[key]);
-    if (decrypted) {
-      credentials.push({
-        account: key,
-        password: decrypted,
-      });
-    }
-  }
-
-  return credentials;
+/**
+ * Verifica se uma credencial específica existe (sem expor o valor)
+ *
+ * @param account - Nome da conta/chave a verificar
+ * @returns true se a credencial existe
+ */
+export function hasCredential(account: string): boolean {
+  const store = getSecureStore();
+  const values = store.get('values');
+  return account in values;
 }
 
 /**
@@ -390,7 +394,9 @@ export function hasAuthToken(): boolean {
 // AIDEV-NOTE: Metodos para armazenar/recuperar chave da API DataJud (CNJ)
 // AIDEV-WARNING: A chave da API DataJud e armazenada de forma segura via AES-256-GCM
 
-const DATAJUD_API_KEY = 'apiKey:datajud';
+// AIDEV-WARNING: NÃO adicionar 'apiKey:' aqui - storeApiKey já adiciona o prefixo
+// Bug anterior: 'apiKey:datajud' + storeApiKey() = 'apiKey:apiKey:datajud'
+const DATAJUD_API_KEY = 'datajud';
 
 /**
  * Armazena a chave da API DataJud de forma segura
@@ -412,7 +418,20 @@ export function setDataJudApiKey(apiKey: string): void {
  * 🔒 AIDEV-SECURITY: A chave retornada e descriptografada, mas nunca logada
  */
 export function getDataJudApiKey(): string | null {
-  return getApiKey(DATAJUD_API_KEY);
+  // AIDEV-NOTE: Migration fallback - tenta chave correta primeiro, depois prefixo duplo antigo
+  const correct = getApiKey(DATAJUD_API_KEY);
+  if (correct) return correct;
+
+  // Fallback: tentar prefixo duplo antigo e migrar
+  const legacy = getApiKey('apiKey:datajud');
+  if (legacy) {
+    // Migra para o lugar correto
+    setDataJudApiKey(legacy);
+    deleteApiKey('apiKey:datajud');
+    return legacy;
+  }
+
+  return null;
 }
 
 /**
@@ -431,4 +450,69 @@ export function deleteDataJudApiKey(): boolean {
  */
 export function hasDataJudApiKey(): boolean {
   return getDataJudApiKey() !== null;
+}
+
+// =============================================================================
+// Escavador Token Storage
+// =============================================================================
+// AIDEV-NOTE: Metodos para armazenar/recuperar token Bearer do Escavador
+// AIDEV-WARNING: O token Bearer do Escavador e armazenado de forma segura via AES-256-GCM
+// AIDEV-SECURITY: Token nunca deve ser logado - usar redactEscavadorToken
+
+// AIDEV-WARNING: NÃO adicionar 'apiKey:' aqui - storeApiKey já adiciona o prefixo
+// Bug anterior: 'apiKey:escavador' + storeApiKey() = 'apiKey:apiKey:escavador'
+const ESCAVADOR_TOKEN_KEY = 'escavador';
+
+/**
+ * Armazena o token Bearer do Escavador de forma segura
+ *
+ * @param token - Token Bearer a ser armazenado
+ *
+ * 🔒 AIDEV-SECURITY: O token e criptografado antes de ser armazenado
+ * ⚠️ AIDEV-NOTE: Validar o token com a API antes de armazenar
+ */
+export function setEscavadorToken(token: string): void {
+  storeApiKey(ESCAVADOR_TOKEN_KEY, token);
+}
+
+/**
+ * Recupera o token Bearer do Escavador armazenado
+ *
+ * @returns Token Bearer ou null se nao existir
+ *
+ * 🔒 AIDEV-SECURITY: O token retornado e descriptografado, mas nunca logado
+ */
+export function getEscavadorToken(): string | null {
+  // AIDEV-NOTE: Migration fallback - tenta chave correta primeiro, depois prefixo duplo antigo
+  const correct = getApiKey(ESCAVADOR_TOKEN_KEY);
+  if (correct) return correct;
+
+  // Fallback: tentar prefixo duplo antigo e migrar
+  const legacy = getApiKey('apiKey:escavador');
+  if (legacy) {
+    // Migra para o lugar correto
+    setEscavadorToken(legacy);
+    deleteApiKey('apiKey:escavador');
+    return legacy;
+  }
+
+  return null;
+}
+
+/**
+ * Remove o token Bearer do Escavador armazenado
+ *
+ * @returns true se o token foi removido, false se nao existia
+ */
+export function deleteEscavadorToken(): boolean {
+  return deleteApiKey(ESCAVADOR_TOKEN_KEY);
+}
+
+/**
+ * Verifica se existe token Bearer do Escavador armazenado
+ *
+ * @returns true se existe token armazenado
+ */
+export function hasEscavadorToken(): boolean {
+  return getEscavadorToken() !== null;
 }

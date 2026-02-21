@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import { app, BrowserWindow, shell, ipcMain, nativeImage, dialog, Menu } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, nativeImage, dialog, Menu, session } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -205,6 +205,43 @@ if (!gotTheLock) {
     // Remove native menu bar (File, Edit, View, Window, Help)
     Menu.setApplicationMenu(null);
 
+    // ============================================================================
+    // Task 9: CSP Headers (VULN-009)
+    // ============================================================================
+    // AIDEV-WARNING: CSP restritivo - lista todos os providers permitidos
+    // Inclui localhost para dev (Ollama, LM Studio, LiteLLM) e Vite HMR
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self';" +
+            " script-src 'self';" +
+            " style-src 'self' 'unsafe-inline';" +
+            " img-src 'self' data: https:;" +
+            " font-src 'self' data:;" +
+            // AIDEV-NOTE: Todos os providers + localhost para dev
+            " connect-src 'self' " +
+            "https://openwork-auth.script7sistemas.workers.dev " +
+            "https://api.anthropic.com " +
+            "https://api.openai.com " +
+            "https://generativelanguage.googleapis.com " +
+            "https://api.x.ai " +
+            "https://openrouter.ai " +
+            "https://api.deepseek.com " +
+            "https://api.moonshot.cn " +
+            "https://api.together.xyz " +
+            "https://bedrock-runtime.*.amazonaws.com " +
+            "http://localhost:* " +
+            "http://127.0.0.1:* " +
+            "ws://localhost:* " +
+            "wss://localhost:*;" +
+            " frame-src 'none';"
+          ],
+        },
+      });
+    });
+
     console.log('[Main] Electron app ready, version:', app.getVersion());
 
     // Migrate data from legacy userData paths if needed (one-time migration)
@@ -307,14 +344,14 @@ app.on('before-quit', () => {
   shutdownLogCollector();
 });
 
-// Handle custom protocol (accomplish://)
-app.setAsDefaultProtocolClient('accomplish');
+// Handle custom protocol (openwork://) - unificado de "accomplish" para "openwork"
+app.setAsDefaultProtocolClient('openwork');
 
 app.on('open-url', (event, url) => {
   event.preventDefault();
   console.log('[Main] Received protocol URL:', url);
   // Handle protocol URL
-  if (url.startsWith('accomplish://callback')) {
+  if (url.startsWith('openwork://callback')) {
     mainWindow?.webContents?.send('auth:callback', url);
   }
 });
