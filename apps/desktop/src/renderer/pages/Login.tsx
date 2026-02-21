@@ -32,8 +32,9 @@ import { Button } from '@/components/ui/button';
 import { getJurisiar } from '@/lib/jurisiar';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // AIDEV-TODO: Remover credenciais de dev antes do release
+  const [email, setEmail] = useState('admin@openwork.app');
+  const [password, setPassword] = useState('Testando2026');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();

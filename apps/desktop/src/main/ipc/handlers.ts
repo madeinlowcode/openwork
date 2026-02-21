@@ -2661,6 +2661,16 @@ export function registerIPCHandlers(): void {
     const { authClient, startSessionRefresh } = await import('../lib/auth-client');
     const result = await authClient.signIn.email(validated);
     if (result.error) throw new Error(result.error.message ?? 'Authentication failed');
+    // AIDEV-NOTE: Better Auth client em Node.js não persiste sessão automaticamente
+    // Salvar token manualmente no secureStorage para que getLocalSession e getSession funcionem
+    if (result.data?.token) {
+      const { storeAuthToken } = await import('../store/secureStorage');
+      storeAuthToken({
+        accessToken: result.data.token,
+        refreshToken: result.data.token, // Better Auth usa mesmo token
+      });
+      console.log('[auth] Session stored');
+    }
     // AIDEV-NOTE: Iniciar refresh automático de sessão
     startSessionRefresh();
     return result.data;
@@ -2695,9 +2705,33 @@ export function registerIPCHandlers(): void {
   });
 
   handle('auth:get-session', async () => {
-    const { authClient } = await import('../lib/auth-client');
+    const { authClient, WORKER_URL } = await import('../lib/auth-client');
+    // Tentar via Better Auth client primeiro
     const session = await authClient.getSession();
-    return session?.data ?? null;
+    if (session?.data) {
+      return session.data;
+    }
+    // Fallback: validar token armazenado diretamente com o servidor
+    const { getAuthToken } = await import('../store/secureStorage');
+    const token = getAuthToken();
+    if (!token?.accessToken) {
+      return null;
+    }
+    try {
+      const res = await fetch(`${WORKER_URL}/api/auth/get-session`, {
+        headers: {
+          'Origin': 'app://openwork',
+          'Authorization': `Bearer ${token.accessToken}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch (err) {
+      // Servidor indisponivel
+    }
+    return null;
   });
 
   // AIDEV-NOTE: Modo offline - retorna sessao cacheada localmente sem fazer chamada de rede

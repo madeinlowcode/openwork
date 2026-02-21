@@ -216,7 +216,7 @@ if (!gotTheLock) {
           ...details.responseHeaders,
           'Content-Security-Policy': [
             "default-src 'self';" +
-            " script-src 'self';" +
+            ` script-src 'self'${VITE_DEV_SERVER_URL ? " 'unsafe-inline'" : ''};` +
             " style-src 'self' 'unsafe-inline';" +
             " img-src 'self' data: https:;" +
             " font-src 'self' data:;" +

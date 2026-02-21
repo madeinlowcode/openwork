@@ -133,11 +133,23 @@ app.on(['GET', 'POST'], '/api/auth/**', async (c) => {
     }
   }
 
-  const auth = createAuth({
-    DATABASE_URL: c.env.DB_HYPERDRIVE.connectionString,
-    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
-  });
-  return auth.handler(c.req.raw);
+  try {
+    const auth = createAuth({
+      DATABASE_URL: c.env.DB_HYPERDRIVE.connectionString,
+      BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
+    });
+    const response = await auth.handler(c.req.raw);
+    if (!response.ok) {
+      const body = await response.clone().text();
+      console.error('[auth] Non-OK response:', response.status, body);
+    }
+    return response;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error('[auth] Error:', message, stack);
+    return c.json({ error: message }, 500);
+  }
 });
 
 // Rota de health check
