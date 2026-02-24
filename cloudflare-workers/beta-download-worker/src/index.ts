@@ -150,7 +150,7 @@ app.get('/api/download/:token', async (c) => {
 
   // AIDEV-NOTE: Redireciona para GitHub Releases (GH_RELEASE_URL definido via wrangler secret/var)
   const releaseUrl = c.env.GH_RELEASE_URL ||
-    'https://github.com/madeinlowcode/openwork-releases/releases/latest/download/openwork-setup.exe';
+    'https://github.com/madeinlowcode/openwork-releases/releases/latest/download/juris-setup.exe';
 
   return Response.redirect(releaseUrl, 302);
 });
