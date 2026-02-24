@@ -5,7 +5,7 @@ compatibility_date = "2025-01-01"
 [vars]
 BETA_CODE = "OPENWORK-BETA-2026"
 # AIDEV-NOTE: URL do asset .exe no GitHub Releases (atualizar a cada nova versao)
-GH_RELEASE_URL = "https://github.com/madeinlowcode/openwork-releases/releases/latest/download/openwork-setup.exe"
+GH_RELEASE_URL = "https://github.com/madeinlowcode/openwork-releases/releases/download/v0.3.5/openwork-setup.exe"
 
 [[kv_namespaces]]
 binding = "BETA_KV"
