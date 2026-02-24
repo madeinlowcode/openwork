@@ -201,6 +201,20 @@ interface JurisiarAPI {
   exportLogs(): Promise<{ success: boolean; path?: string; error?: string; reason?: string }>;
 
   // ============================================================================
+  // Auto-Update Events
+  // ============================================================================
+  // AIDEV-NOTE: Events from electron-updater for auto-update notification UI
+
+  /** Subscribe to update available event */
+  onUpdateAvailable?(callback: (data: { version: string }) => void): () => void;
+  /** Subscribe to download progress event */
+  onUpdateProgress?(callback: (data: { percent: number; bytesPerSecond: number }) => void): () => void;
+  /** Subscribe to update downloaded event */
+  onUpdateDownloaded?(callback: (data: { version: string }) => void): () => void;
+  /** Restart app and install update */
+  restartAndUpdate?(): Promise<void>;
+
+  // ============================================================================
   // Window Controls API (for TitleBar)
   // ============================================================================
   // AIDEV-NOTE: Window control methods for custom title bar
@@ -274,6 +288,8 @@ interface JurisiarAPI {
     // Better Auth Methods (Cloudflare Worker)
     /** Sign in with email and password via Better Auth */
     signIn(credentials: { email: string; password: string }): Promise<unknown>;
+    /** Sign up with name, email and password via Better Auth */
+    signUp(credentials: { name: string; email: string; password: string }): Promise<unknown>;
     /** Sign out via Better Auth */
     signOut(): Promise<void>;
     /** Get current session from Better Auth */

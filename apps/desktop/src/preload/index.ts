@@ -288,6 +288,29 @@ const jurisiarAPI = {
   },
 
   // ============================================================================
+  // Auto-Update Event Subscriptions
+  // ============================================================================
+  // AIDEV-NOTE: Events from electron-updater for auto-update UI
+  // AIDEV-WARNING: These events are emitted by the main process updater
+
+  onUpdateAvailable: (callback: (data: { version: string }) => void) => {
+    const sub = (_: unknown, data: { version: string }) => callback(data);
+    ipcRenderer.on('update:available', sub);
+    return () => { ipcRenderer.removeListener('update:available', sub); };
+  },
+  onUpdateProgress: (callback: (data: { percent: number; bytesPerSecond: number }) => void) => {
+    const sub = (_: unknown, data: { percent: number; bytesPerSecond: number }) => callback(data);
+    ipcRenderer.on('update:progress', sub);
+    return () => { ipcRenderer.removeListener('update:progress', sub); };
+  },
+  onUpdateDownloaded: (callback: (data: { version: string }) => void) => {
+    const sub = (_: unknown, data: { version: string }) => callback(data);
+    ipcRenderer.on('update:downloaded', sub);
+    return () => { ipcRenderer.removeListener('update:downloaded', sub); };
+  },
+  restartAndUpdate: () => ipcRenderer.invoke('app:restart-and-update'),
+
+  // ============================================================================
   // Fallback System Event Subscriptions
   // ============================================================================
   // AIDEV-NOTE: Events for monitoring automatic model switching on rate limit
@@ -481,6 +504,10 @@ const jurisiarAPI = {
     /** Sign in with email and password via Better Auth */
     signIn: (credentials: { email: string; password: string }): Promise<unknown> =>
       ipcRenderer.invoke('auth:sign-in', credentials),
+
+    /** Sign up with name, email and password via Better Auth */
+    signUp: (credentials: { name: string; email: string; password: string }): Promise<unknown> =>
+      ipcRenderer.invoke('auth:sign-up', credentials),
 
     /** Sign out via Better Auth */
     signOut: (): Promise<void> =>

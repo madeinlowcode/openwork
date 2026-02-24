@@ -40,11 +40,13 @@ import HomePage from './pages/Home';
 import ExecutionPage from './pages/Execution';
 import AuthPage from './pages/Auth';
 import { LoginPage } from './pages/Login';
+import { RegisterPage } from './pages/Register';
 
 // Components
 import Sidebar from './components/layout/Sidebar';
 import { TaskLauncher } from './components/TaskLauncher';
 import { AuthErrorToast } from './components/AuthErrorToast';
+import { UpdateNotification } from './components/UpdateNotification';
 import { AuthGate } from './components/AuthGate';
 import SettingsDialog from './components/layout/SettingsDialog';
 import { useTaskStore } from './stores/taskStore';
@@ -143,11 +145,11 @@ const { openLauncher, authError, clearAuthError } = useTaskStore();
   }
 
   // AIDEV-NOTE: Verificar se esta em rota publica (sem sidebar)
-  const isAuthRoute = location.pathname === '/auth' || location.pathname === '/login';
+  const isAuthRoute = location.pathname === '/auth' || location.pathname === '/login' || location.pathname === '/register';
 
   // AIDEV-NOTE: Rotas /auth e /login sao renderizadas sem sidebar e sem protecao
   if (isAuthRoute) {
-    const AuthComponent = location.pathname === '/login' ? LoginPage : AuthPage;
+    const AuthComponent = location.pathname === '/login' ? LoginPage : location.pathname === '/register' ? RegisterPage : AuthPage;
     return (
       <div className="min-h-screen bg-background">
         {/* Invisible drag region for window dragging (macOS hiddenInset titlebar) */}
@@ -211,11 +213,15 @@ const { openLauncher, authError, clearAuthError } = useTaskStore();
             {/* AIDEV-NOTE: Rotas /auth e /login sao tratadas acima, mas manter fallback aqui */}
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AnimatePresence>
       </main>
       <TaskLauncher />
+
+      {/* Update Notification Toast */}
+      <UpdateNotification />
 
       {/* Auth Error Toast - shown when OAuth session expires */}
       <AuthErrorToast

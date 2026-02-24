@@ -1,0 +1,12 @@
+name = "beta-download-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+BETA_CODE = "OPENWORK-BETA-2026"
+# AIDEV-NOTE: URL do asset .exe no GitHub Releases (atualizar a cada nova versao)
+GH_RELEASE_URL = "https://github.com/madeinlowcode/openwork-releases/releases/latest/download/openwork-setup.exe"
+
+[[kv_namespaces]]
+binding = "BETA_KV"
+id = "e8de07e0fd5b4550a813eff1c5586338"

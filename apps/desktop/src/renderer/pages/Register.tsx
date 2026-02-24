@@ -1,26 +1,29 @@
 /**
- * @page LoginPage
- * @description Pagina de login via Better Auth (Cloudflare Worker).
- * Formulario de email/senha que autentica via IPC -> main process -> Worker.
+ * @page RegisterPage
+ * @description Pagina de registro de novo usuario via Better Auth (Cloudflare Worker).
+ * Formulario com nome, email, senha e confirmacao de senha.
  *
- * @route /login
+ * @route /register
  *
  * @dependencies
  * - react-router-dom (useNavigate)
  * - components/ui/button.tsx (Button)
  * - lib/jurisiar.ts (getJurisiar)
+ * - lucide-react (Loader2, Scale)
  *
  * @relatedFiles
- * - App.tsx (define rota /login)
- * - components/AuthGate.tsx (redireciona para /login se nao autenticado)
+ * - App.tsx (define rota /register)
+ * - pages/Login.tsx (pagina de login - mesmo estilo visual)
+ * - components/AuthGate.tsx (redireciona se nao autenticado)
  * - src/main/lib/auth-client.ts (cliente Better Auth no main process)
- * - src/main/ipc/handlers.ts (handler auth:sign-in)
+ * - src/main/ipc/handlers.ts (handler auth:sign-up)
+ * - src/preload/index.ts (expoe auth.signUp via IPC)
  *
  * @stateManagement
- * - useState: email, password, error, loading
+ * - useState: name, email, password, confirmPassword, error, loading
  *
  * AIDEV-WARNING: Nao confundir com Auth.tsx (Supabase) — este usa Better Auth
- * AIDEV-NOTE: Redireciona para / apos login bem-sucedido
+ * AIDEV-NOTE: Redireciona para /login com state { registered: true } apos sucesso
  */
 
 'use client';
@@ -31,23 +34,43 @@ import { Loader2, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getJurisiar } from '@/lib/jurisiar';
 
-export function LoginPage() {
+export function RegisterPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // AIDEV-NOTE: Validacao client-side antes de enviar ao servidor
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('E-mail inválido');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Senha deve ter pelo menos 8 caracteres');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem');
+      return;
+    }
+
+    setLoading(true);
     try {
       const jurisiar = getJurisiar();
-      await jurisiar.auth?.signIn({ email, password });
-      navigate('/');
+      await jurisiar.auth?.signUp({ name, email, password });
+      navigate('/login', { state: { registered: true } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Credenciais invalidas');
+      setError(err instanceof Error ? err.message : 'Erro ao criar conta');
     } finally {
       setLoading(false);
     }
@@ -67,9 +90,9 @@ export function LoginPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Scale className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-lg font-semibold text-foreground">Entrar no Openwork</h1>
+          <h1 className="text-lg font-semibold text-foreground">Criar conta no Openwork</h1>
           <p className="text-sm text-muted-foreground">
-            Insira suas credenciais para continuar
+            Preencha os dados para se cadastrar
           </p>
         </div>
 
@@ -80,34 +103,67 @@ export function LoginPage() {
           </p>
         )}
 
-        {/* Email */}
+        {/* Name */}
         <div className="space-y-1">
-          <label htmlFor="login-email" className="text-sm font-medium text-foreground">
-            E-mail
+          <label htmlFor="register-name" className="text-sm font-medium text-foreground">
+            Nome completo
           </label>
           <input
-            id="login-email"
-            type="email"
-            placeholder="seu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="register-name"
+            type="text"
+            placeholder="Seu nome"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             required
             autoFocus
           />
         </div>
 
+        {/* Email */}
+        <div className="space-y-1">
+          <label htmlFor="register-email" className="text-sm font-medium text-foreground">
+            E-mail
+          </label>
+          <input
+            id="register-email"
+            type="email"
+            placeholder="seu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            required
+          />
+        </div>
+
         {/* Password */}
         <div className="space-y-1">
-          <label htmlFor="login-password" className="text-sm font-medium text-foreground">
+          <label htmlFor="register-password" className="text-sm font-medium text-foreground">
             Senha
           </label>
           <input
-            id="login-password"
+            id="register-password"
             type="password"
-            placeholder="Sua senha"
+            placeholder="Minimo 8 caracteres"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            required
+            minLength={8}
+          />
+        </div>
+
+        {/* Confirm Password */}
+        <div className="space-y-1">
+          <label htmlFor="register-confirm-password" className="text-sm font-medium text-foreground">
+            Confirmar senha
+          </label>
+          <input
+            id="register-confirm-password"
+            type="password"
+            placeholder="Repita a senha"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             required
           />
@@ -118,22 +174,22 @@ export function LoginPage() {
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Entrando...
+              Criando conta...
             </>
           ) : (
-            'Entrar'
+            'Criar conta'
           )}
         </Button>
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
-          Nao tem conta?{' '}
+          Ja tem conta?{' '}
           <button
             type="button"
             className="text-primary hover:underline"
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/login')}
           >
-            Criar conta
+            Entrar
           </button>
         </p>
       </form>
@@ -141,4 +197,4 @@ export function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default RegisterPage;

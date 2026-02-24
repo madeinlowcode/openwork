@@ -308,6 +308,45 @@ if (!gotTheLock) {
 
     createWindow();
 
+    // ============================================================================
+    // Auto-Update (electron-updater)
+    // ============================================================================
+    // AIDEV-NOTE: Auto-update silencioso — baixa em background, instala ao fechar
+    // AIDEV-WARNING: Requer repo público accomplish-ai/openwork-releases para assets
+    const { autoUpdater } = await import('electron-updater');
+
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.allowPrerelease = true;
+
+    autoUpdater.on('update-available', (info) => {
+      console.log('[AutoUpdate] Update available:', info.version);
+      mainWindow?.webContents.send('update:available', { version: info.version });
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+      mainWindow?.webContents.send('update:progress', {
+        percent: progress.percent,
+        bytesPerSecond: progress.bytesPerSecond,
+      });
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      console.log('[AutoUpdate] Update downloaded:', info.version);
+      mainWindow?.webContents.send('update:downloaded', { version: info.version });
+    });
+
+    autoUpdater.on('error', (err) => {
+      console.error('[AutoUpdate] Error:', err.message);
+    });
+
+    // Check 10s after window ready (não bloquear startup)
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch((err: Error) => {
+        console.error('[AutoUpdate] Check failed:', err.message);
+      });
+    }, 10_000);
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
@@ -363,6 +402,11 @@ ipcMain.handle('app:version', () => {
 
 ipcMain.handle('app:platform', () => {
   return process.platform;
+});
+
+ipcMain.handle('app:restart-and-update', async () => {
+  const { autoUpdater } = await import('electron-updater');
+  autoUpdater.quitAndInstall();
 });
 
 ipcMain.handle('app:is-e2e-mode', () => {

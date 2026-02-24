@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Openwork — Assistente de Automação Jurídica com IA</title>
+  <meta name="description" content="Beta exclusivo para profissionais do direito. Consulta DataJud, pesquisa Escavador e IA com múltiplos provedores." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#f3f0ff',
+              100: '#e9e3ff',
+              200: '#d4c9ff',
+              300: '#b5a0ff',
+              400: '#9171ff',
+              500: '#7c4dff',
+              600: '#6d28d9',
+              700: '#5b21b6',
+              800: '#4c1d95',
+              900: '#3b0f7a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, rgba(109,40,217,0.15) 0%, rgba(59,130,246,0.10) 50%, rgba(109,40,217,0.05) 100%); }
+    .gradient-border { border-image: linear-gradient(135deg, #7c4dff, #3b82f6) 1; }
+    .glow { box-shadow: 0 0 40px rgba(124,77,255,0.15); }
+    @keyframes fade-up { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .animate-fade-up { animation: fade-up 0.6s ease-out forwards; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 antialiased">
+
+  <!-- Header -->
+  <header class="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-gray-950/80 backdrop-blur-lg">
+    <div class="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <!-- Scale icon -->
+        <svg class="w-8 h-8 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" />
+        </svg>
+        <span class="text-xl font-bold tracking-tight">Openwork</span>
+      </div>
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-600/20 border border-brand-500/30 px-3 py-1 text-xs font-semibold text-brand-300 uppercase tracking-wider">
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
+        Beta Privado
+      </span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Hero -->
+    <section class="relative pt-32 pb-20 gradient-bg overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(124,77,255,0.12),transparent_70%)]"></div>
+      <div class="relative max-w-3xl mx-auto px-6 text-center animate-fade-up">
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight">
+          Assistente de automação <br class="hidden sm:block" />
+          <span class="bg-gradient-to-r from-brand-400 to-blue-400 bg-clip-text text-transparent">jurídica com IA</span>
+        </h1>
+        <p class="mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto">
+          Beta exclusivo para profissionais do direito. Automatize consultas, pesquisas e tarefas repetitivas com inteligência artificial.
+        </p>
+
+        <!-- Form -->
+        <form id="beta-form" class="mt-10 max-w-md mx-auto space-y-3">
+          <div>
+            <input
+              id="beta-code"
+              type="text"
+              placeholder="Código de acesso beta"
+              required
+              class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition"
+            />
+          </div>
+          <div>
+            <input
+              id="beta-email"
+              type="email"
+              placeholder="Seu e-mail profissional"
+              required
+              class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition"
+            />
+          </div>
+          <button
+            type="submit"
+            id="btn-submit"
+            class="w-full rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3 px-6 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Acessar Download
+          </button>
+          <p id="form-message" class="text-sm mt-2 hidden"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="py-20 border-t border-white/5">
+      <div class="max-w-6xl mx-auto px-6">
+        <h2 class="text-center text-2xl sm:text-3xl font-bold mb-12">Funcionalidades Principais</h2>
+        <div class="grid sm:grid-cols-3 gap-8">
+
+          <!-- DataJud -->
+          <div class="rounded-xl border border-white/5 bg-white/[0.02] p-6 hover:border-brand-500/30 transition glow">
+            <div class="w-12 h-12 rounded-lg bg-brand-600/20 flex items-center justify-center mb-4">
+              <svg class="w-6 h-6 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Consulta DataJud Integrada</h3>
+            <p class="text-sm text-gray-400">Pesquise processos em 91 tribunais brasileiros diretamente do aplicativo, com filtros avançados e resultados instantâneos.</p>
+          </div>
+
+          <!-- Escavador -->
+          <div class="rounded-xl border border-white/5 bg-white/[0.02] p-6 hover:border-brand-500/30 transition glow">
+            <div class="w-12 h-12 rounded-lg bg-brand-600/20 flex items-center justify-center mb-4">
+              <svg class="w-6 h-6 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">Pesquisa Escavador</h3>
+            <p class="text-sm text-gray-400">Busque informações de pessoas, empresas e processos com a API do Escavador, tudo integrado na mesma interface.</p>
+          </div>
+
+          <!-- IA -->
+          <div class="rounded-xl border border-white/5 bg-white/[0.02] p-6 hover:border-brand-500/30 transition glow">
+            <div class="w-12 h-12 rounded-lg bg-brand-600/20 flex items-center justify-center mb-4">
+              <svg class="w-6 h-6 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">IA com Múltiplos Provedores</h3>
+            <p class="text-sm text-gray-400">Use sua chave da Anthropic, OpenAI, Google ou xAI. Escolha o modelo que melhor atende suas necessidades.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="py-20 border-t border-white/5 gradient-bg">
+      <div class="max-w-4xl mx-auto px-6">
+        <h2 class="text-center text-2xl sm:text-3xl font-bold mb-12">Como Funciona</h2>
+        <div class="grid sm:grid-cols-3 gap-8">
+          <div class="text-center">
+            <div class="w-14 h-14 rounded-full bg-brand-600/20 border border-brand-500/30 flex items-center justify-center mx-auto mb-4">
+              <span class="text-xl font-bold text-brand-400">1</span>
+            </div>
+            <h3 class="font-semibold mb-2">Insira seu código beta</h3>
+            <p class="text-sm text-gray-400">Use o código de acesso exclusivo que você recebeu para liberar o download.</p>
+          </div>
+          <div class="text-center">
+            <div class="w-14 h-14 rounded-full bg-brand-600/20 border border-brand-500/30 flex items-center justify-center mx-auto mb-4">
+              <span class="text-xl font-bold text-brand-400">2</span>
+            </div>
+            <h3 class="font-semibold mb-2">Baixe e instale o app</h3>
+            <p class="text-sm text-gray-400">Faça o download do instalador para Windows e siga as instruções de instalação.</p>
+          </div>
+          <div class="text-center">
+            <div class="w-14 h-14 rounded-full bg-brand-600/20 border border-brand-500/30 flex items-center justify-center mx-auto mb-4">
+              <span class="text-xl font-bold text-brand-400">3</span>
+            </div>
+            <h3 class="font-semibold mb-2">Configure sua chave de API</h3>
+            <p class="text-sm text-gray-400">Adicione sua chave de API do provedor de IA preferido e comece a usar.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- System Requirements -->
+    <section class="py-20 border-t border-white/5">
+      <div class="max-w-4xl mx-auto px-6">
+        <h2 class="text-center text-2xl sm:text-3xl font-bold mb-12">Requisitos do Sistema</h2>
+        <div class="max-w-lg mx-auto rounded-xl border border-white/5 bg-white/[0.02] p-8">
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-brand-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <span class="font-medium">Windows 10/11</span>
+                <span class="text-gray-400 text-sm ml-1">(64-bit)</span>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-brand-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <span class="font-medium">4GB de RAM</span>
+                <span class="text-gray-400 text-sm ml-1">(8GB recomendado)</span>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-brand-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <span class="font-medium">500MB de espaço em disco</span>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-brand-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <span class="font-medium">Conexão com internet</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SmartScreen Instructions -->
+    <section class="py-20 border-t border-white/5 gradient-bg">
+      <div class="max-w-4xl mx-auto px-6">
+        <h2 class="text-center text-2xl sm:text-3xl font-bold mb-4">Aviso do Windows SmartScreen</h2>
+        <p class="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
+          Como o Openwork ainda nao possui assinatura digital, o Windows pode exibir um aviso de seguranca. Siga estes passos para prosseguir com a instalacao:
+        </p>
+        <div class="grid sm:grid-cols-3 gap-6">
+
+          <!-- Step 1 -->
+          <div class="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center">
+            <div class="w-12 h-12 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center mx-auto mb-4">
+              <span class="text-lg font-bold text-yellow-400">1</span>
+            </div>
+            <div class="mb-3">
+              <svg class="w-10 h-10 text-yellow-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold mb-2 text-sm">Aviso aparecera</h3>
+            <p class="text-xs text-gray-400">"O Windows protegeu seu computador" sera exibido na tela.</p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center">
+            <div class="w-12 h-12 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center mx-auto mb-4">
+              <span class="text-lg font-bold text-blue-400">2</span>
+            </div>
+            <div class="mb-3">
+              <svg class="w-10 h-10 text-blue-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold mb-2 text-sm">Clique em "Mais informacoes"</h3>
+            <p class="text-xs text-gray-400">O link aparece abaixo da mensagem de aviso. Clique nele para ver mais opcoes.</p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center">
+            <div class="w-12 h-12 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
+              <span class="text-lg font-bold text-green-400">3</span>
+            </div>
+            <div class="mb-3">
+              <svg class="w-10 h-10 text-green-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 class="font-semibold mb-2 text-sm">Clique em "Executar assim mesmo"</h3>
+            <p class="text-xs text-gray-400">O botao aparecera apos clicar em "Mais informacoes". A instalacao prosseguira normalmente.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 py-8">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p class="text-sm text-gray-500">Openwork &copy; 2026</p>
+      <div class="flex gap-6 text-sm text-gray-500">
+        <a href="#" class="hover:text-gray-300 transition">Suporte</a>
+        <a href="#" class="hover:text-gray-300 transition">Termos</a>
+        <a href="#" class="hover:text-gray-300 transition">Privacidade</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Form Script -->
+  <script>
+    const form = document.getElementById('beta-form');
+    const codeInput = document.getElementById('beta-code');
+    const emailInput = document.getElementById('beta-email');
+    const btn = document.getElementById('btn-submit');
+    const msg = document.getElementById('form-message');
+
+    function showMessage(text, type) {
+      msg.textContent = text;
+      msg.className = 'text-sm mt-2 ' + (type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-gray-400');
+      msg.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const code = codeInput.value.trim();
+      const email = emailInput.value.trim();
+
+      if (!code) { showMessage('Insira o codigo de acesso.', 'error'); return; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMessage('Insira um e-mail valido.', 'error'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Validando...';
+      msg.classList.add('hidden');
+
+      try {
+        const res = await fetch('https://beta-download-worker.script7sistemas.workers.dev/api/validate-beta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, email }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.downloadUrl) {
+          showMessage('Codigo validado! Redirecionando para download...', 'success');
+          setTimeout(() => { window.location.href = data.downloadUrl; }, 1500);
+        } else {
+          showMessage(data.message || 'Codigo invalido ou expirado.', 'error');
+        }
+      } catch (err) {
+        showMessage('Erro ao conectar com o servidor. Tente novamente.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Acessar Download';
+      }
+    });
+  </script>
+
+</body>
+</html>
