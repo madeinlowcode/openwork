@@ -32,11 +32,14 @@ export interface Env {
 
 const app = new Hono<{ Bindings: Env }>();
 
-// AIDEV-NOTE: CORS permissivo para landing page — ajustar origin em producao
+// AIDEV-NOTE: CORS restrito aos dominios da landing page
 app.use(
   '*',
   cors({
-    origin: '*',
+    origin: [
+      'https://juris.madeinvibecoding.com',
+      'https://juris-beta.pages.dev',
+    ],
     allowHeaders: ['Content-Type'],
     allowMethods: ['GET', 'POST', 'OPTIONS'],
   })
